@@ -1,0 +1,310 @@
+// Schéma Prisma pour l'application de gestion des attestations du Service Civique
+// Basé sur le Prompt 2 - Modèle de données complet
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum Role {
+  AGENT
+  DIRECTEUR
+  ADMIN
+}
+
+enum StatutDemande {
+  ENREGISTREE
+  EN_TRAITEMENT
+  PIECES_NON_CONFORMES
+  VALIDEE
+  EN_ATTENTE_SIGNATURE
+  SIGNEE
+  REJETEE
+  DELIVREE
+}
+
+enum TypePiece {
+  DEMANDE_MANUSCRITE
+  CERTIFICAT_ASSIDUITE
+  CERTIFICAT_CESSATION
+  CERTIFICAT_PRISE_SERVICE
+  COPIE_ARRETE
+}
+
+enum StatutIndexation {
+  EN_ATTENTE
+  EN_COURS
+  INDEXE
+  ERREUR
+}
+
+enum CanalNotification {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum StatutNotification {
+  EN_ATTENTE
+  ENVOYEE
+  ECHEC
+}
+
+enum TypeSignature {
+  MANUELLE
+  ELECTRONIQUE
+}
+
+enum StatutAttestation {
+  GENEREE
+  SIGNEE
+  DELIVREE
+}
+
+// ============================================================================
+// ENTITÉS PRINCIPALES
+// ============================================================================
+
+// 1. UTILISATEURS SYSTÈME
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Hashé avec bcrypt
+  nom       String
+  prenom    String
+  role      Role
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  demandesTraitees    Demande[]           @relation("AgentTraitant")
+  attestationsSignees Attestation[]       @relation("Signataire")
+  signatureConfig     DirecteurSignature?
+  auditLogs           AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// 2. DEMANDES
+model Demande {
+  id                    String        @id @default(cuid())
+  numeroEnregistrement  String        @unique
+  dateEnregistrement    DateTime
+  statut                StatutDemande @default(ENREGISTREE)
+  observations          String?       @db.Text
+  motifRejet            String?       @db.Text
+  
+  // Agent traitant
+  agentId               String?
+  agent                 User?         @relation("AgentTraitant", fields: [agentId], references: [id])
+  
+  // Dates
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  dateValidation        DateTime?
+  dateSignature         DateTime?
+
+  // Relations
+  appele                Appele?
+  pieces                PieceDossier[]
+  attestation           Attestation?
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+
+  @@index([numeroEnregistrement])
+  @@index([statut])
+  @@index([agentId])
+  @@index([dateEnregistrement])
+  @@map("demandes")
+}
+
+// 3. APPELÉ (informations de l'appelé)
+model Appele {
+  id                String   @id @default(cuid())
+  nom               String
+  prenom            String
+  dateNaissance     DateTime
+  lieuNaissance     String
+  email             String?
+  telephone         String?
+  whatsapp          String?
+  diplome           String
+  promotion         String
+  numeroArrete      String?
+  structure         String?
+  dateDebutService  DateTime
+  dateFinService    DateTime
+  
+  // Relation one-to-one avec Demande
+  demandeId         String   @unique
+  demande           Demande  @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+
+  @@index([nom, prenom])
+  @@index([promotion])
+  @@index([numeroArrete])
+  @@map("appeles")
+}
+
+// 4. PIÈCES DU DOSSIER
+model PieceDossier {
+  id          String     @id @default(cuid())
+  type        TypePiece
+  present     Boolean    @default(false)
+  conforme    Boolean?
+  observation String?    @db.Text
+  
+  // Relation avec Demande
+  demandeId   String
+  demande     Demande    @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+
+  @@index([demandeId])
+  @@map("pieces_dossier")
+}
+
+// 5. ARRÊTÉS DE SERVICE CIVIQUE
+model Arrete {
+  id                String            @id @default(cuid())
+  numero            String            @unique
+  dateArrete        DateTime
+  promotion         String
+  annee             String
+  fichierPath       String
+  contenuOCR        String?           @db.Text
+  statutIndexation  StatutIndexation  @default(EN_ATTENTE)
+  messageErreur     String?           @db.Text
+  createdAt         DateTime          @default(now())
+  dateIndexation    DateTime?
+
+  @@index([numero])
+  @@index([promotion])
+  @@index([annee])
+  @@index([statutIndexation])
+  @@map("arretes")
+}
+
+// 6. ATTESTATIONS
+model Attestation {
+  id              String             @id @default(cuid())
+  numero          String             @unique // Format: ATT-AAAA-XXXXX
+  dateGeneration  DateTime           @default(now())
+  dateSignature   DateTime?
+  typeSignature   TypeSignature?
+  fichierPath     String
+  qrCodeData      String             @db.Text // JSON
+  statut          StatutAttestation  @default(GENEREE)
+  
+  // Relations
+  demandeId       String             @unique
+  demande         Demande            @relation(fields: [demandeId], references: [id])
+  
+  signataireId    String?
+  signataire      User?              @relation("Signataire", fields: [signataireId], references: [id])
+
+  @@index([numero])
+  @@index([statut])
+  @@index([dateGeneration])
+  @@map("attestations")
+}
+
+// 7. TEMPLATE ATTESTATION
+model TemplateAttestation {
+  id             String   @id @default(cuid())
+  nom            String
+  fichierPath    String
+  mappingChamps  String   @db.Text // JSON avec positions des champs
+  actif          Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("templates_attestation")
+}
+
+// 8. CONFIGURATION SIGNATURE DIRECTEUR
+model DirecteurSignature {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signatureImage  String   // Chemin vers l'image de signature
+  positionX       Float
+  positionY       Float
+  texteSignature  String   // Ex: "Le Directeur\nDr. Moussa IBRAHIM"
+  pinHash         String   // PIN hashé avec bcrypt
+  pinAttempts     Int      @default(0)
+  pinBloqueJusqua DateTime?
+  isEnabled       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("directeur_signatures")
+}
+
+// 9. NOTIFICATIONS
+model Notification {
+  id            String              @id @default(cuid())
+  demandeId     String
+  demande       Demande             @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+  canal         CanalNotification
+  destinataire  String
+  contenu       String              @db.Text
+  statut        StatutNotification  @default(EN_ATTENTE)
+  dateEnvoi     DateTime?
+  messageErreur String?             @db.Text
+  tentatives    Int                 @default(0)
+  createdAt     DateTime            @default(now())
+
+  @@index([demandeId])
+  @@index([statut])
+  @@index([canal])
+  @@map("notifications")
+}
+
+// 10. JOURNAL D'AUDIT
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  demandeId  String?
+  demande    Demande? @relation(fields: [demandeId], references: [id], onDelete: SetNull)
+  details    String?  @db.Text // JSON
+  ipAddress  String?
+  userAgent  String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([demandeId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// 11. CONFIGURATION SYSTÈME
+model ConfigSystem {
+  id        String   @id @default(cuid())
+  cle       String   @unique
+  valeur    String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("config_system")
+}
+
+// 12. COMPTEUR D'ATTESTATIONS
+model AttestationCounter {
+  id      String @id @default("singleton")
+  year    Int
+  counter Int
+
+  @@map("attestation_counter")
+}
