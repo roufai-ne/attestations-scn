@@ -6,10 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { TypeNotification } from '@/lib/notifications/templates';
+import { CanalNotification } from '@prisma/client';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -18,11 +20,13 @@ export async function POST(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const { observations } = await request.json();
+    const { id } = await params;
+
+    const { observations, envoyerNotification = true } = await request.json();
 
     // Vérifier que la demande existe
     const demande = await prisma.demande.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!demande) {
@@ -30,7 +34,7 @@ export async function POST(
     }
 
     // Vérifier que la demande peut être validée
-    if (!['EN_TRAITEMENT', 'PIECES_NON_CONFORMES'].includes(demande.statut)) {
+    if (!['ENREGISTREE', 'EN_TRAITEMENT', 'PIECES_NON_CONFORMES'].includes(demande.statut)) {
       return NextResponse.json(
         { error: 'Cette demande ne peut pas être validée dans son état actuel' },
         { status: 400 }
@@ -39,10 +43,10 @@ export async function POST(
 
     // Mettre à jour la demande
     const updated = await prisma.demande.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         statut: 'VALIDEE',
-        dateTraitement: new Date(),
+        dateValidation: new Date(),
         observations: observations || demande.observations,
       },
       include: {
@@ -56,35 +60,39 @@ export async function POST(
       data: {
         action: 'DEMANDE_VALIDATED',
         userId: session.user.id,
-        demandeId: params.id,
+        demandeId: id,
         details: JSON.stringify({ observations }),
         ipAddress: request.headers.get('x-forwarded-for') || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
       },
     });
 
-    // Envoyer une notification à l'appelé
-    try {
-      const { NotificationService } = await import('@/lib/notifications/notification.service');
-
-      if (updated.appele?.email || updated.appele?.telephone) {
-        await NotificationService.send({
-          type: 'DEMANDE_EN_TRAITEMENT',
-          destinataire: {
-            nom: `${updated.appele.prenom} ${updated.appele.nom}`,
-            email: updated.appele.email || undefined,
-            telephone: updated.appele.telephone || undefined,
-          },
+    // Envoyer une notification à l'appelé (si demandé)
+    if (envoyerNotification) {
+      try {
+        if (updated.appele?.email || updated.appele?.telephone) {
+          const { notificationService } = await import('@/lib/notifications/notification.service');
+        
+        // Build canaux array based on available contact methods
+        const canaux: CanalNotification[] = [];
+        if (updated.appele.email) canaux.push(CanalNotification.EMAIL);
+        if (updated.appele.telephone) canaux.push(CanalNotification.SMS);
+        
+        await notificationService.send({
+          demandeId: updated.id,
+          type: TypeNotification.DEMANDE_EN_TRAITEMENT,
+          canaux,
           data: {
             numeroEnregistrement: updated.numeroEnregistrement,
-            nomAppele: `${updated.appele.prenom} ${updated.appele.nom}`,
+            nom: updated.appele.nom,
+            prenom: updated.appele.prenom,
           },
-          demandeId: updated.id,
         });
       }
-    } catch (notifError) {
-      console.error('Erreur envoi notification:', notifError);
-      // Ne pas bloquer la validation si la notification échoue
+      } catch (notifError) {
+        console.error('Erreur envoi notification:', notifError);
+        // Ne pas bloquer la validation si la notification échoue
+      }
     }
 
     return NextResponse.json(updated);

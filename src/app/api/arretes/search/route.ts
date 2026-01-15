@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { arreteService } from '@/lib/services/arrete.service';
 
 /**
  * GET /api/arretes/search
  * Recherche dans le contenu OCR des arrêtés
- * Accessible aux agents et admins
+ * Accessible aux agents de saisie, agents et admins
  */
 export async function GET(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await auth();
 
-        if (!session || !['AGENT', 'ADMIN'].includes(session.user.role)) {
+        if (!session || !['SAISIE', 'AGENT', 'ADMIN'].includes(session.user.role)) {
             return NextResponse.json(
                 { error: 'Non autorisé' },
                 { status: 403 }

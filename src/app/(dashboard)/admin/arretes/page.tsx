@@ -1,52 +1,61 @@
-import { Suspense } from 'react';
-import { auth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useEffect, useState } from 'react';
 import { ArretesDataTable } from '@/components/admin/ArretesDataTable';
 import { ArreteUploadDialogButton } from '@/components/admin/ArreteUploadDialogButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { arreteService } from '@/lib/services/arrete.service';
 
-export const metadata = {
-  title: 'Gestion des Arrêtés | Admin',
-  description: 'Gestion et indexation des arrêtés de service civique',
-};
+export default function ArretesPage() {
+  const [stats, setStats] = useState<any>(null);
+  const [arretes, setArretes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-async function getStats() {
-  try {
-    return await arreteService.getIndexationStats();
-  } catch (error) {
-    console.error('Erreur lors du chargement des stats:', error);
-    return {
-      total: 0,
-      byStatus: {
-        EN_ATTENTE: 0,
-        EN_COURS: 0,
-        INDEXE: 0,
-        ERREUR: 0,
-      },
-    };
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      // Load stats from API
+      const statsResponse = await fetch('/api/admin/arretes/stats');
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setStats(statsData);
+      }
+
+      // Load arretes list from API  
+      const arretesResponse = await fetch('/api/admin/arretes');
+      if (arretesResponse.ok) {
+        const arretesData = await arretesResponse.json();
+        setArretes(arretesData.data || []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Chargement...</p>
+        </div>
+      </div>
+    );
   }
-}
 
-async function getArretes() {
-  try {
-    const result = await arreteService.listArretes({ page: 1, limit: 100 });
-    return result.data;
-  } catch (error) {
-    console.error('Erreur lors du chargement des arrêtés:', error);
-    return [];
-  }
-}
-
-export default async function ArretesPage() {
-  const session = await auth();
-
-  if (!session?.user || session.user.role !== 'ADMIN') {
-    redirect('/login');
-  }
-
-  const [stats, arretes] = await Promise.all([getStats(), getArretes()]);
+  const defaultStats = stats || {
+    total: 0,
+    byStatus: {
+      EN_ATTENTE: 0,
+      EN_COURS: 0,
+      INDEXE: 0,
+      ERREUR: 0,
+    },
+  };
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -69,7 +78,7 @@ export default async function ArretesPage() {
             <FileText className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-2xl font-bold">{defaultStats.total}</div>
             <p className="text-xs text-gray-500 mt-1">Arrêtés uploadés</p>
           </CardContent>
         </Card>
@@ -81,7 +90,7 @@ export default async function ArretesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {stats.byStatus.INDEXE || 0}
+              {defaultStats.byStatus.INDEXE || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Prêts pour recherche</p>
           </CardContent>
@@ -94,7 +103,7 @@ export default async function ArretesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {(stats.byStatus.EN_ATTENTE || 0) + (stats.byStatus.EN_COURS || 0)}
+              {(defaultStats.byStatus.EN_ATTENTE || 0) + (defaultStats.byStatus.EN_COURS || 0)}
             </div>
             <p className="text-xs text-gray-500 mt-1">En traitement OCR</p>
           </CardContent>
@@ -107,7 +116,7 @@ export default async function ArretesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {stats.byStatus.ERREUR || 0}
+              {defaultStats.byStatus.ERREUR || 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">Nécessitent attention</p>
           </CardContent>
@@ -123,9 +132,7 @@ export default async function ArretesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<div>Chargement...</div>}>
-            <ArretesDataTable initialData={arretes} />
-          </Suspense>
+          <ArretesDataTable initialData={arretes} />
         </CardContent>
       </Card>
     </div>

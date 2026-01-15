@@ -12,8 +12,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Bell } from 'lucide-react';
 
 interface ValidationDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ interface ValidationDialogProps {
 
 export function ValidationDialog({ open, onOpenChange, demandeId, onSuccess }: ValidationDialogProps) {
   const [observations, setObservations] = useState('');
+  const [envoyerNotification, setEnvoyerNotification] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const handleValidate = async () => {
@@ -32,7 +34,7 @@ export function ValidationDialog({ open, onOpenChange, demandeId, onSuccess }: V
       const response = await fetch(`/api/demandes/${demandeId}/valider`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ observations }),
+        body: JSON.stringify({ observations, envoyerNotification }),
       });
 
       if (response.ok) {
@@ -75,6 +77,18 @@ export function ValidationDialog({ open, onOpenChange, demandeId, onSuccess }: V
               onChange={(e) => setObservations(e.target.value)}
               rows={4}
             />
+          </div>
+
+          <div className="flex items-center gap-3 p-3 rounded-lg border">
+            <Checkbox
+              id="envoyerNotification"
+              checked={envoyerNotification}
+              onCheckedChange={(checked) => setEnvoyerNotification(checked as boolean)}
+            />
+            <Label htmlFor="envoyerNotification" className="flex items-center gap-2 cursor-pointer">
+              <Bell className="h-4 w-4" />
+              Envoyer une notification à l'appelé
+            </Label>
           </div>
 
           <div className="bg-green-50 p-4 rounded-lg border border-green-200">

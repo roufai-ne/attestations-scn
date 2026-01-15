@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { arreteService } from '@/lib/services/arrete.service';
 
 /**
@@ -9,10 +8,10 @@ import { arreteService } from '@/lib/services/arrete.service';
  */
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await auth();
 
         if (!session || session.user.role !== 'ADMIN') {
             return NextResponse.json(
@@ -21,7 +20,8 @@ export async function POST(
             );
         }
 
-        await arreteService.reindexArrete(params.id);
+        const { id } = await params;
+        await arreteService.reindexArrete(id);
 
         return NextResponse.json({
             success: true,

@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/password';
 import { auditService, AuditAction } from '@/lib/audit';
@@ -16,7 +16,7 @@ const createUserSchema = z.object({
   email: z.string().email('Email invalide'),
   nom: z.string().min(1, 'Nom requis'),
   prenom: z.string().min(1, 'Prénom requis'),
-  role: z.enum(['AGENT', 'DIRECTEUR', 'ADMIN']),
+  role: z.enum(['SAISIE', 'AGENT', 'DIRECTEUR', 'ADMIN']),
   password: z.string().min(8, 'Mot de passe minimum 8 caractères'),
   actif: z.boolean().default(true),
 });
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Données invalides', details: validation.error.errors },
+        { error: 'Données invalides', details: validation.error.issues },
         { status: 400 }
       );
     }

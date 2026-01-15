@@ -136,12 +136,19 @@ export default function UtilisateursPage() {
   };
 
   const getRoleBadge = (role: Role) => {
-    const colors = {
+    const colors: Record<Role, string> = {
       ADMIN: 'bg-purple-500',
       DIRECTEUR: 'bg-blue-500',
       AGENT: 'bg-green-500',
+      SAISIE: 'bg-orange-500',
     };
-    return <Badge className={colors[role]}>{role}</Badge>;
+    const labels: Record<Role, string> = {
+      ADMIN: 'Admin',
+      DIRECTEUR: 'Directeur',
+      AGENT: 'Agent traitant',
+      SAISIE: 'Agent saisie',
+    };
+    return <Badge className={colors[role]}>{labels[role]}</Badge>;
   };
 
   if (loading) {
@@ -184,7 +191,8 @@ export default function UtilisateursPage() {
             <SelectItem value="all">Tous les rôles</SelectItem>
             <SelectItem value="ADMIN">Administrateurs</SelectItem>
             <SelectItem value="DIRECTEUR">Directeurs</SelectItem>
-            <SelectItem value="AGENT">Agents</SelectItem>
+            <SelectItem value="AGENT">Agents traitants</SelectItem>
+            <SelectItem value="SAISIE">Agents de saisie</SelectItem>
           </SelectContent>
         </Select>
       </div>

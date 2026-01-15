@@ -1,113 +1,120 @@
-import Queue from 'bull';
-import redisClient from '../redis.config';
-import { ocrService } from './ocr.service';
+import { Queue, Worker, Job } from 'bullmq';
 import { prisma } from '../prisma';
 import { StatutIndexation } from '@prisma/client';
 
-// Queue pour le traitement OCR des arrêtés
-export const ocrQueue = new Queue('ocr-processing', {
-    redis: {
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        host: process.env.REDIS_HOST || 'localhost',
-    },
+// Configuration Redis
+const redisConnection = {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+};
+
+// Queue pour l'extraction de texte des arrêtés
+export const ocrQueue = new Queue('text-extraction', {
+    connection: redisConnection,
     defaultJobOptions: {
         attempts: 3,
         backoff: {
             type: 'exponential',
             delay: 2000,
         },
-        removeOnComplete: 100, // Garder les 100 derniers jobs complétés
-        removeOnFail: 200, // Garder les 200 derniers jobs échoués
+        removeOnComplete: 100,
+        removeOnFail: 200,
     },
 });
 
-// Interface pour les données du job OCR
-export interface OCRJobData {
+// Interface pour les données du job d'extraction
+export interface TextExtractionJobData {
     arreteId: string;
     filePath: string;
 }
 
 /**
- * Processeur de jobs OCR
- * Extrait le texte d'un arrêté PDF et met à jour la base de données
+ * Worker pour l'extraction de texte des arrêtés PDF
+ * Extrait le texte natif d'un arrêté PDF et met à jour la base de données
  */
-ocrQueue.process(async (job) => {
-    const { arreteId, filePath } = job.data as OCRJobData;
+export const ocrWorker = new Worker<TextExtractionJobData>(
+    'text-extraction',
+    async (job: Job<TextExtractionJobData>) => {
+        const { arreteId, filePath } = job.data;
 
-    console.log(`🚀 Démarrage du job OCR pour l'arrêté ${arreteId}`);
+        console.log(`🚀 Démarrage de l'extraction de texte pour l'arrêté ${arreteId}`);
 
-    try {
-        // Mettre à jour le statut à EN_COURS
-        await prisma.arrete.update({
-            where: { id: arreteId },
-            data: {
-                statutIndexation: StatutIndexation.EN_COURS,
-                messageErreur: null,
-            },
-        });
+        try {
+            // Mettre à jour le statut à EN_COURS
+            await prisma.arrete.update({
+                where: { id: arreteId },
+                data: {
+                    statutIndexation: StatutIndexation.EN_COURS,
+                    messageErreur: null,
+                },
+            });
 
-        job.progress(10);
+            await job.updateProgress(10);
 
-        // Extraire le texte via OCR
-        const result = await ocrService.extractTextFromPDF(filePath);
+            // Import dynamique du service d'extraction de texte
+            const { pdfTextExtractor } = await import('./pdf-text-extractor.service');
 
-        job.progress(80);
+            // Extraire le texte du PDF
+            const result = await pdfTextExtractor.extractText(filePath);
 
-        // Nettoyer le texte
-        const cleanedText = ocrService.cleanText(result.text);
+            await job.updateProgress(80);
 
-        job.progress(90);
+            // Nettoyer le texte si trouvé
+            const cleanedText = result.hasText ? pdfTextExtractor.cleanText(result.text) : null;
 
-        // Mettre à jour l'arrêté avec le contenu OCR
-        await prisma.arrete.update({
-            where: { id: arreteId },
-            data: {
-                contenuOCR: cleanedText,
-                statutIndexation: StatutIndexation.INDEXE,
-                dateIndexation: new Date(),
-                messageErreur: null,
-            },
-        });
+            await job.updateProgress(90);
 
-        job.progress(100);
+            // Mettre à jour l'arrêté avec le texte extrait
+            await prisma.arrete.update({
+                where: { id: arreteId },
+                data: {
+                    contenuOCR: cleanedText,
+                    statutIndexation: result.hasText ? StatutIndexation.INDEXE : StatutIndexation.ERREUR,
+                    dateIndexation: new Date(),
+                    messageErreur: result.hasText ? null : 'PDF scanné - Texte non extractible',
+                },
+            });
 
-        console.log(`✅ Job OCR terminé pour l'arrêté ${arreteId} (${result.pageCount} pages, confiance: ${result.confidence.toFixed(2)}%)`);
+            await job.updateProgress(100);
 
-        return {
-            success: true,
-            arreteId,
-            pageCount: result.pageCount,
-            confidence: result.confidence,
-            textLength: cleanedText.length,
-        };
+            console.log(`✅ Extraction terminée pour l'arrêté ${arreteId} (${result.pageCount} pages, ${result.hasText ? 'texte trouvé' : 'PDF scanné'})`);
 
-    } catch (error) {
-        console.error(`❌ Erreur lors du traitement OCR de l'arrêté ${arreteId}:`, error);
+            return {
+                success: true,
+                arreteId,
+                pageCount: result.pageCount,
+                confidence: result.confidence,
+                textLength: cleanedText.length,
+            };
 
-        // Mettre à jour le statut à ERREUR
-        await prisma.arrete.update({
-            where: { id: arreteId },
-            data: {
-                statutIndexation: StatutIndexation.ERREUR,
-                messageErreur: error instanceof Error ? error.message : 'Erreur inconnue',
-            },
-        });
+        } catch (error) {
+            console.error(`❌ Erreur lors du traitement OCR de l'arrêté ${arreteId}:`, error);
 
-        throw error;
+            // Mettre à jour le statut à ERREUR
+            await prisma.arrete.update({
+                where: { id: arreteId },
+                data: {
+                    statutIndexation: StatutIndexation.ERREUR,
+                    messageErreur: error instanceof Error ? error.message : 'Erreur inconnue',
+                },
+            });
+
+            throw error;
+        }
+    },
+    {
+        connection: redisConnection,
+        concurrency: 5,
     }
+);
+
+// Événements du worker
+ocrWorker.on('completed', (job) => {
+    console.log(`✅ Job ${job.id} complété`);
 });
 
-// Événements de la queue
-ocrQueue.on('completed', (job, result) => {
-    console.log(`✅ Job ${job.id} complété:`, result);
-});
-
-ocrQueue.on('failed', (job, err) => {
+ocrWorker.on('failed', (job, err) => {
     console.error(`❌ Job ${job?.id} échoué:`, err);
-});
-
-ocrQueue.on('stalled', (job) => {
-    console.warn(`⚠️ Job ${job.id} bloqué`);
 });
 
 /**
@@ -115,6 +122,7 @@ ocrQueue.on('stalled', (job) => {
  */
 export async function addOCRJob(arreteId: string, filePath: string) {
     const job = await ocrQueue.add(
+        'process-ocr',
         { arreteId, filePath },
         {
             jobId: `ocr-${arreteId}`,
@@ -138,7 +146,7 @@ export async function getOCRJobStatus(arreteId: string) {
     }
 
     const state = await job.getState();
-    const progress = job.progress();
+    const progress = job.progress;
 
     return {
         id: job.id,

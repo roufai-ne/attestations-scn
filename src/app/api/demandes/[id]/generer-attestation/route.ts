@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { attestationService } from '@/lib/services/attestation.service';
 import { prisma } from '@/lib/prisma';
+import { TypeNotification } from '@/lib/notifications/templates';
 
 /**
  * POST /api/demandes/[id]/generer-attestation
@@ -10,10 +10,10 @@ import { prisma } from '@/lib/prisma';
  */
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await auth();
 
         if (!session || !['AGENT', 'ADMIN'].includes(session.user.role)) {
             return NextResponse.json(
@@ -22,9 +22,11 @@ export async function POST(
             );
         }
 
+        const { id } = await params;
+
         // Récupérer la demande avec l'appelé
         const demande = await prisma.demande.findUnique({
-            where: { id: params.id },
+            where: { id },
             include: {
                 appele: true,
                 attestation: true,
@@ -63,8 +65,8 @@ export async function POST(
         }
 
         // Générer l'attestation
-        const attestation = await attestationService.createAttestation(params.id, {
-            demandeId: params.id,
+        const attestation = await attestationService.createAttestation(id, {
+            demandeId: id,
             nom: demande.appele.nom,
             prenom: demande.appele.prenom,
             dateNaissance: demande.appele.dateNaissance,
@@ -75,6 +77,50 @@ export async function POST(
             dateFinService: demande.appele.dateFinService,
             promotion: demande.appele.promotion,
         });
+
+        // Mettre à jour le statut de la demande à EN_ATTENTE_SIGNATURE
+        await prisma.demande.update({
+            where: { id },
+            data: { statut: 'EN_ATTENTE_SIGNATURE' },
+        });
+
+        // Logger le changement de statut
+        await prisma.historiqueStatut.create({
+            data: {
+                demandeId: id,
+                statut: 'EN_ATTENTE_SIGNATURE',
+                commentaire: 'Attestation générée, en attente de signature',
+                modifiePar: session.user.id,
+            },
+        });
+
+        // Envoyer une notification à l'appelé
+        try {
+            const { notificationService } = await import('@/lib/notifications/notification.service');
+            const { CanalNotification } = await import('@prisma/client');
+
+            // Déterminer les canaux disponibles
+            const canaux: typeof CanalNotification[] = [];
+            if (demande.appele.email) canaux.push('EMAIL' as any);
+            if (demande.appele.telephone) canaux.push('SMS' as any);
+
+            if (canaux.length > 0) {
+                await notificationService.send({
+                    demandeId: id,
+                    type: TypeNotification.ATTESTATION_PRETE,
+                    canaux: canaux as any,
+                    data: {
+                        numeroEnregistrement: demande.numeroEnregistrement,
+                        nom: demande.appele.nom,
+                        prenom: demande.appele.prenom,
+                        numeroAttestation: attestation.numero,
+                    },
+                });
+            }
+        } catch (notifError) {
+            console.error('Erreur notification génération attestation:', notifError);
+            // Ne pas bloquer si la notification échoue
+        }
 
         return NextResponse.json({
             success: true,

@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { readFile } from 'fs/promises';
 
 /**
  * GET /api/attestations/[id]/download
- * Télécharge le fichier PDF d'une attestation
+ * Télécharge une attestation PDF
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await auth();
 
         if (!session || !['AGENT', 'DIRECTEUR', 'ADMIN'].includes(session.user.role)) {
             return NextResponse.json(
@@ -22,9 +21,11 @@ export async function GET(
             );
         }
 
+        const { id } = await params;
+
         // Récupérer l'attestation
         const attestation = await prisma.attestation.findUnique({
-            where: { id: params.id },
+            where: { id: id },
             include: {
                 demande: {
                     include: {

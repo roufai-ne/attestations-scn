@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { statsService } from '@/lib/services/stats.service';
 
 /**
@@ -9,7 +8,7 @@ import { statsService } from '@/lib/services/stats.service';
  */
 export async function GET(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await auth();
 
         if (!session || session.user.role !== 'DIRECTEUR') {
             return NextResponse.json(

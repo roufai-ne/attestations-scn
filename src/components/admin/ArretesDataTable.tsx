@@ -194,14 +194,14 @@ export function ArretesDataTable({ initialData = [] }: ArretesDataTableProps) {
                 </div>
 
                 <Select
-                    value={filters.statut}
-                    onValueChange={(value) => setFilters({ ...filters, statut: value })}
+                    value={filters.statut || "all"}
+                    onValueChange={(value) => setFilters({ ...filters, statut: value === "all" ? "" : value })}
                 >
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Statut" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">Tous les statuts</SelectItem>
+                        <SelectItem value="all">Tous les statuts</SelectItem>
                         <SelectItem value="EN_ATTENTE">En attente</SelectItem>
                         <SelectItem value="EN_COURS">En cours</SelectItem>
                         <SelectItem value="INDEXE">Indexé</SelectItem>

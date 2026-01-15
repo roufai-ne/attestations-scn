@@ -15,6 +15,7 @@ datasource db {
 // ============================================================================
 
 enum Role {
+  SAISIE
   AGENT
   DIRECTEUR
   ADMIN
@@ -90,6 +91,7 @@ model User {
   attestationsSignees Attestation[]       @relation("Signataire")
   signatureConfig     DirecteurSignature?
   auditLogs           AuditLog[]
+  historiqueStatuts   HistoriqueStatut[]  @relation("HistoriqueModificateur")
 
   @@index([email])
   @@index([role])
@@ -121,6 +123,7 @@ model Demande {
   attestation           Attestation?
   notifications         Notification[]
   auditLogs             AuditLog[]
+  historique            HistoriqueStatut[]
 
   @@index([numeroEnregistrement])
   @@index([statut])
@@ -158,18 +161,37 @@ model Appele {
 
 // 4. PIÈCES DU DOSSIER
 model PieceDossier {
-  id          String     @id @default(cuid())
-  type        TypePiece
-  present     Boolean    @default(false)
-  conforme    Boolean?
-  observation String?    @db.Text
+  id                  String     @id @default(cuid())
+  type                TypePiece
+  present             Boolean    @default(false)
+  conforme            Boolean?
+  observation         String?    @db.Text
+  statutVerification  String?    // CONFORME, NON_CONFORME, null = pas encore vérifié
+  dateVerification    DateTime?
+  verifiePar          String?    // ID de l'agent qui a vérifié
   
   // Relation avec Demande
-  demandeId   String
-  demande     Demande    @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+  demandeId           String
+  demande             Demande    @relation(fields: [demandeId], references: [id], onDelete: Cascade)
 
   @@index([demandeId])
   @@map("pieces_dossier")
+}
+
+// 4B. HISTORIQUE DES STATUTS
+model HistoriqueStatut {
+  id           String        @id @default(cuid())
+  demandeId    String
+  demande      Demande       @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+  statut       StatutDemande
+  commentaire  String?       @db.Text
+  createdAt    DateTime      @default(now())
+  modifiePar   String
+  modificateur User          @relation("HistoriqueModificateur", fields: [modifiePar], references: [id])
+
+  @@index([demandeId])
+  @@index([createdAt])
+  @@map("historique_statuts")
 }
 
 // 5. ARRÊTÉS DE SERVICE CIVIQUE

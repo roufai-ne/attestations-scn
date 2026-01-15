@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { auditService } from '@/lib/audit';
 import { z } from 'zod';
@@ -22,7 +22,7 @@ const updateUserSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -30,8 +30,10 @@ export async function GET(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
+    const { id } = await params;
+
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       select: {
         id: true,
         email: true,
@@ -59,7 +61,7 @@ export async function GET(
     }
 
     // Récupérer l'activité récente
-    const recentActivity = await auditService.getUserActivity(params.id, 10);
+    const recentActivity = await auditService.getUserActivity(id, 10);
 
     return NextResponse.json({
       user,
@@ -73,7 +75,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -81,9 +83,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
+    const { id } = await params;
+
     // Vérifier que l'utilisateur existe
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!existingUser) {
@@ -95,7 +99,7 @@ export async function PATCH(
 
     // Empêcher un admin de se supprimer lui-même le rôle admin
     if (
-      params.id === session.user.id &&
+      id === session.user.id &&
       existingUser.role === 'ADMIN'
     ) {
       const body = await request.json();
@@ -112,7 +116,7 @@ export async function PATCH(
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Données invalides', details: validation.error.errors },
+        { error: 'Données invalides', details: validation.error.issues },
         { status: 400 }
       );
     }
@@ -135,7 +139,7 @@ export async function PATCH(
 
     // Mettre à jour l'utilisateur
     const updatedUser = await prisma.user.update({
-      where: { id: params.id },
+      where: { id: id },
       data,
       select: {
         id: true,
@@ -151,7 +155,7 @@ export async function PATCH(
     // Log d'audit
     await auditService.logUserUpdated(
       session.user.id!,
-      params.id,
+      id,
       data,
       request.headers.get('x-forwarded-for') || undefined
     );
@@ -168,7 +172,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -176,8 +180,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
+    const { id } = await params;
+
     // Empêcher un admin de se supprimer lui-même
-    if (params.id === session.user.id) {
+    if (id === session.user.id) {
       return NextResponse.json(
         { error: 'Vous ne pouvez pas supprimer votre propre compte' },
         { status: 403 }
@@ -186,7 +192,7 @@ export async function DELETE(
 
     // Vérifier que l'utilisateur existe
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!user) {
@@ -199,7 +205,7 @@ export async function DELETE(
     // Supprimer l'utilisateur (soft delete en désactivant)
     // Ou hard delete si préféré
     await prisma.user.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { actif: false },
     });
 
@@ -209,7 +215,7 @@ export async function DELETE(
     // Log d'audit
     await auditService.logUserDeleted(
       session.user.id!,
-      params.id,
+      id,
       user.email,
       request.headers.get('x-forwarded-for') || undefined
     );

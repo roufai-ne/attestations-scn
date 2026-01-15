@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { signatureService } from '@/lib/services/signature.service';
+import { TypeNotification } from '@/lib/notifications/templates';
+import { CanalNotification } from '@prisma/client';
 
 /**
  * POST /api/directeur/attestations/[id]/signer
@@ -9,10 +10,10 @@ import { signatureService } from '@/lib/services/signature.service';
  */
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await auth();
 
         if (!session || session.user.role !== 'DIRECTEUR') {
             return NextResponse.json(
@@ -20,6 +21,8 @@ export async function POST(
                 { status: 403 }
             );
         }
+
+        const { id } = await params;
 
         const body = await request.json();
         const { pin } = body;
@@ -33,10 +36,53 @@ export async function POST(
 
         // Signer l'attestation
         const attestation = await signatureService.signAttestation(
-            params.id,
+            id,
             session.user.id,
             pin
         );
+
+        // Envoyer une notification à l'appelé
+        try {
+            const { prisma } = await import('@/lib/prisma');
+
+            const attestationData = await prisma.attestation.findUnique({
+                where: { id: id },
+                include: {
+                    demande: {
+                        include: {
+                            appele: true,
+                        },
+                    },
+                },
+            });
+
+            if (attestationData?.demande.appele) {
+                const appele = attestationData.demande.appele;
+                if (appele.email || appele.telephone) {
+                    const { notificationService } = await import('@/lib/notifications/notification.service');
+                    
+                    // Build canaux array based on available contact methods
+                    const canaux: CanalNotification[] = [];
+                    if (appele.email) canaux.push(CanalNotification.EMAIL);
+                    if (appele.telephone) canaux.push(CanalNotification.SMS);
+                    
+                    await notificationService.send({
+                        demandeId: attestationData.demande.id,
+                        type: TypeNotification.ATTESTATION_PRETE,
+                        canaux,
+                        data: {
+                            numeroEnregistrement: attestationData.demande.numeroEnregistrement,
+                            nom: appele.nom,
+                            prenom: appele.prenom,
+                            numeroAttestation: attestation.numero,
+                        },
+                    });
+                }
+            }
+        } catch (notifError) {
+            console.error('Erreur notification signature attestation:', notifError);
+            // Ne pas bloquer si la notification échoue
+        }
 
         return NextResponse.json({
             success: true,

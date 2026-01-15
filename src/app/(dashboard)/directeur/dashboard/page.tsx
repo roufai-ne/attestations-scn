@@ -33,12 +33,18 @@ export default function DirecteurDashboardPage() {
 
             if (statsRes.ok) {
                 const statsData = await statsRes.json();
+                console.log('Stats data:', statsData);
                 setStats(statsData);
             }
 
             if (attestationsRes.ok) {
                 const attestationsData = await attestationsRes.json();
-                setAttestationsEnAttente(attestationsData);
+                console.log('Attestations data:', attestationsData);
+                // L'API retourne { attestations: [], pagination: {} }
+                const attestations = attestationsData.attestations || [];
+                setAttestationsEnAttente(Array.isArray(attestations) ? attestations : []);
+            } else {
+                console.error('Erreur API attestations:', attestationsRes.status, await attestationsRes.text());
             }
         } catch (error) {
             console.error('Erreur:', error);
@@ -88,12 +94,20 @@ export default function DirecteurDashboardPage() {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle>Attestations en attente de signature</CardTitle>
-                        {attestationsEnAttente.length > 0 && (
-                            <Button onClick={handleSignAll}>
-                                <FileSignature className="mr-2 h-4 w-4" />
-                                Signer tout ({attestationsEnAttente.length})
+                        <div className="flex gap-2">
+                            <Button 
+                                variant="outline"
+                                onClick={() => router.push('/directeur/attestations')}
+                            >
+                                Voir toutes les attestations
                             </Button>
-                        )}
+                            {attestationsEnAttente.length > 0 && (
+                                <Button onClick={handleSignAll}>
+                                    <FileSignature className="mr-2 h-4 w-4" />
+                                    Signer tout ({attestationsEnAttente.length})
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>

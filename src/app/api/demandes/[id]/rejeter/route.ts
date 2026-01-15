@@ -6,10 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { TypeNotification } from '@/lib/notifications/templates';
+import { CanalNotification } from '@prisma/client';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -18,7 +20,9 @@ export async function POST(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const { motif } = await request.json();
+    const { id } = await params;
+
+    const { motif, envoyerNotification = true } = await request.json();
 
     if (!motif || !motif.trim()) {
       return NextResponse.json(
@@ -29,7 +33,7 @@ export async function POST(
 
     // Vérifier que la demande existe
     const demande = await prisma.demande.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!demande) {
@@ -46,10 +50,10 @@ export async function POST(
 
     // Mettre à jour la demande
     const updated = await prisma.demande.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         statut: 'REJETEE',
-        dateTraitement: new Date(),
+        dateValidation: new Date(),
         observations: motif,
       },
       include: {
@@ -63,36 +67,40 @@ export async function POST(
       data: {
         action: 'DEMANDE_REJECTED',
         userId: session.user.id,
-        demandeId: params.id,
+        demandeId: id,
         details: JSON.stringify({ motif }),
         ipAddress: request.headers.get('x-forwarded-for') || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
       },
     });
 
-    // Envoyer une notification à l'appelé avec le motif
-    try {
-      const { NotificationService } = await import('@/lib/notifications/notification.service');
-
-      if (updated.appele?.email || updated.appele?.telephone) {
-        await NotificationService.send({
-          type: 'DEMANDE_REJETEE',
-          destinataire: {
-            nom: `${updated.appele.prenom} ${updated.appele.nom}`,
-            email: updated.appele.email || undefined,
-            telephone: updated.appele.telephone || undefined,
-          },
-          data: {
-            numeroEnregistrement: updated.numeroEnregistrement,
-            nomAppele: `${updated.appele.prenom} ${updated.appele.nom}`,
-            motifRejet: motif,
-          },
-          demandeId: updated.id,
-        });
+    // Envoyer une notification à l'appelé avec le motif (si demandé)
+    if (envoyerNotification) {
+      try {
+        if (updated.appele?.email || updated.appele?.telephone) {
+          const { notificationService } = await import('@/lib/notifications/notification.service');
+          
+          // Build canaux array based on available contact methods
+          const canaux: CanalNotification[] = [];
+          if (updated.appele.email) canaux.push(CanalNotification.EMAIL);
+          if (updated.appele.telephone) canaux.push(CanalNotification.SMS);
+          
+          await notificationService.send({
+            demandeId: updated.id,
+            type: TypeNotification.DEMANDE_REJETEE,
+            canaux,
+            data: {
+              numeroEnregistrement: updated.numeroEnregistrement,
+              nom: updated.appele.nom,
+              prenom: updated.appele.prenom,
+              motifRejet: motif,
+            },
+          });
+        }
+      } catch (notifError) {
+        console.error('Erreur envoi notification:', notifError);
+        // Ne pas bloquer le rejet si la notification échoue
       }
-    } catch (notifError) {
-      console.error('Erreur envoi notification:', notifError);
-      // Ne pas bloquer le rejet si la notification échoue
     }
 
     return NextResponse.json(updated);

@@ -5,7 +5,7 @@
  * Affichage, modification, validation/rejet
  */
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,27 +22,30 @@ import {
   Clock,
   Edit,
   Download,
+  AlertTriangle,
 } from 'lucide-react';
 import { ValidationDialog } from '@/components/agent/ValidationDialog';
 import { RejectionDialog } from '@/components/agent/RejectionDialog';
 import { EditDemandeDialog } from '@/components/agent/EditDemandeDialog';
 
-export default function DemandeDetailPage({ params }: { params: { id: string } }) {
+export default function DemandeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { id } = use(params);
   const [demande, setDemande] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [validationOpen, setValidationOpen] = useState(false);
   const [rejectionOpen, setRejectionOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [verifyingPiece, setVerifyingPiece] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDemande();
-  }, [params.id]);
+  }, [id]);
 
   const fetchDemande = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/demandes/${params.id}`);
+      const response = await fetch(`/api/demandes/${id}`);
       if (response.ok) {
         const data = await response.json();
         setDemande(data);
@@ -72,16 +75,141 @@ export default function DemandeDetailPage({ params }: { params: { id: string } }
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
+  const getPieceLabel = (typePiece: string) => {
+    const labels: Record<string, string> = {
+      DEMANDE_MANUSCRITE: 'Demande manuscrite',
+      CERTIFICAT_ASSIDUITE: 'Certificat d\'assiduité',
+      CERTIFICAT_CESSATION: 'Certificat de cessation',
+      CERTIFICAT_PRISE_SERVICE: 'Certificat de prise de service',
+      COPIE_ARRETE: 'Copie de l\'arrêté',
+    };
+    return labels[typePiece] || typePiece;
+  };
+
   const canEdit = () => {
     return demande && ['ENREGISTREE', 'EN_TRAITEMENT', 'PIECES_NON_CONFORMES'].includes(demande.statut);
   };
 
+  const allPiecesVerified = () => {
+    if (!demande?.pieces || demande.pieces.length === 0) return false;
+    // Vérifier seulement les pièces présentes
+    const piecesPresentes = demande.pieces.filter((piece: any) => piece.present);
+    if (piecesPresentes.length === 0) return false;
+    return piecesPresentes.every((piece: any) => piece.statutVerification !== null);
+  };
+
+  const allPiecesConformes = () => {
+    if (!demande?.pieces || demande.pieces.length === 0) return false;
+    // Vérifier seulement les pièces présentes
+    const piecesPresentes = demande.pieces.filter((piece: any) => piece.present);
+    if (piecesPresentes.length === 0) return false;
+    return piecesPresentes.every((piece: any) => piece.conforme === true);
+  };
+
   const canValidate = () => {
-    return demande && ['EN_TRAITEMENT', 'PIECES_NON_CONFORMES'].includes(demande.statut);
+    return demande && 
+           ['ENREGISTREE', 'EN_TRAITEMENT', 'PIECES_NON_CONFORMES'].includes(demande.statut) &&
+           allPiecesVerified() &&
+           allPiecesConformes();
   };
 
   const canReject = () => {
-    return demande && ['EN_TRAITEMENT', 'PIECES_NON_CONFORMES'].includes(demande.statut);
+    return demande && ['ENREGISTREE', 'EN_TRAITEMENT', 'PIECES_NON_CONFORMES'].includes(demande.statut);
+  };
+
+  const canMarkPiecesNonConformes = () => {
+    return demande && 
+           ['EN_TRAITEMENT', 'ENREGISTREE'].includes(demande.statut) && 
+           demande.pieces?.length > 0 &&
+           allPiecesVerified() &&
+           !allPiecesConformes();
+  };
+
+  const canGenerateAttestation = () => {
+    return demande && demande.statut === 'VALIDEE' && !demande.attestation;
+  };
+
+  const handleMarquerPiecesNonConformes = async () => {
+    if (!demande?.pieces) return;
+    
+    // Récupérer les pièces non conformes déjà vérifiées
+    const piecesNonConformes = demande.pieces
+      .filter((piece: any) => piece.present && piece.conforme === false)
+      .map((piece: any) => ({
+        type: piece.type,
+        observation: piece.observation || ''
+      }));
+
+    if (piecesNonConformes.length === 0) {
+      toast.error('Aucune pièce non conforme trouvée');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/demandes/${id}/pieces-non-conformes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          piecesNonConformes,
+          observations: 'Pièces non conformes détectées lors de la vérification'
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Pièces signalées comme non conformes');
+        fetchDemande();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Erreur lors du signalement');
+      }
+    } catch (error) {
+      console.error('Erreur signalement pièces:', error);
+      toast.error('Erreur lors du signalement');
+    }
+  };
+
+  const handleVerifyPiece = async (pieceId: string, conforme: boolean) => {
+    setVerifyingPiece(pieceId);
+    try {
+      const response = await fetch(`/api/demandes/${id}/pieces/${pieceId}/verify`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conforme }),
+      });
+
+      if (response.ok) {
+        toast.success(`Pièce marquée comme ${conforme ? 'conforme' : 'non conforme'}`);
+        await fetchDemande();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Erreur lors de la vérification');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la vérification de la pièce');
+    } finally {
+      setVerifyingPiece(null);
+    }
+  };
+
+  const handleGenerateAttestation = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/demandes/${id}/generer-attestation`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        toast.success('Attestation générée avec succès');
+        fetchDemande();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Erreur lors de la génération');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la génération de l\'attestation');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -121,7 +249,7 @@ export default function DemandeDetailPage({ params }: { params: { id: string } }
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {canEdit() && (
           <Button variant="outline" onClick={() => setEditOpen(true)}>
             <Edit className="h-4 w-4 mr-2" />
@@ -138,6 +266,22 @@ export default function DemandeDetailPage({ params }: { params: { id: string } }
           <Button variant="destructive" onClick={() => setRejectionOpen(true)}>
             <XCircle className="h-4 w-4 mr-2" />
             Rejeter
+          </Button>
+        )}
+        {canMarkPiecesNonConformes() && (
+          <Button
+            variant="outline"
+            onClick={handleMarquerPiecesNonConformes}
+            className="border-orange-300 text-orange-700 hover:bg-orange-50"
+          >
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Pièces non conformes
+          </Button>
+        )}
+        {canGenerateAttestation() && (
+          <Button onClick={handleGenerateAttestation} className="bg-blue-600 hover:bg-blue-700">
+            <FileText className="h-4 w-4 mr-2" />
+            Générer l'attestation
           </Button>
         )}
         {demande.attestation && (
@@ -259,38 +403,126 @@ export default function DemandeDetailPage({ params }: { params: { id: string } }
               <CheckCircle className="h-5 w-5" />
               Vérification des pièces du dossier
             </CardTitle>
-            <CardDescription>État de conformité des pièces justificatives</CardDescription>
+            <CardDescription>
+              Cochez chaque pièce comme conforme ou non conforme pour débloquer les actions
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {demande.pieces && demande.pieces.length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                {demande.pieces.map((piece: any) => (
-                  <div
-                    key={piece.id}
-                    className={`p-4 rounded-lg border ${
-                      piece.conforme
-                        ? 'border-green-200 bg-green-50'
-                        : 'border-red-200 bg-red-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{piece.typePiece}</p>
-                        {piece.observation && (
-                          <p className="text-sm text-muted-foreground mt-1">{piece.observation}</p>
-                        )}
+              <>
+                <div className="grid gap-3 md:grid-cols-2 mb-4">
+                  {demande.pieces.map((piece: any) => (
+                    <div
+                      key={piece.id}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        !piece.present
+                          ? 'border-gray-200 bg-gray-100 opacity-60'
+                          : piece.conforme === true
+                          ? 'border-green-500 bg-green-50'
+                          : piece.conforme === false
+                          ? 'border-red-500 bg-red-50'
+                          : 'border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <p className="font-medium">{getPieceLabel(piece.type)}</p>
+                            {!piece.present && (
+                              <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">Manquante</span>
+                            )}
+                          </div>
+                          {piece.observation && (
+                            <p className="text-sm text-muted-foreground mb-3">{piece.observation}</p>
+                          )}
+                          
+                          {/* Boutons de vérification */}
+                          {['EN_TRAITEMENT', 'ENREGISTREE', 'PIECES_NON_CONFORMES'].includes(demande.statut) && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant={piece.conforme === true ? 'default' : 'outline'}
+                                className={piece.conforme === true ? 'bg-green-600 hover:bg-green-700' : ''}
+                                onClick={() => handleVerifyPiece(piece.id, true)}
+                                disabled={!piece.present || verifyingPiece === piece.id}
+                              >
+                                {verifyingPiece === piece.id && piece.conforme === true ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
+                                ) : (
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                )}
+                                Conforme
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={piece.conforme === false ? 'destructive' : 'outline'}
+                                onClick={() => handleVerifyPiece(piece.id, false)}
+                                disabled={!piece.present || verifyingPiece === piece.id}
+                              >
+                                {verifyingPiece === piece.id && piece.conforme === false ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
+                                ) : (
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                )}
+                                Non conforme
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Icône de statut */}
+                        <div>
+                          {piece.conforme === true ? (
+                            <CheckCircle className="h-6 w-6 text-green-600" />
+                          ) : piece.conforme === false ? (
+                            <XCircle className="h-6 w-6 text-red-600" />
+                          ) : (
+                            <Clock className="h-6 w-6 text-gray-400" />
+                          )}
+                        </div>
                       </div>
-                      {piece.conforme ? (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-red-600" />
-                      )}
                     </div>
+                  ))}
+                </div>
+
+                {/* Résumé de la vérification */}
+                <div className={`p-4 rounded-lg border ${
+                  allPiecesVerified() 
+                    ? allPiecesConformes()
+                      ? 'border-green-200 bg-green-50'
+                      : 'border-orange-200 bg-orange-50'
+                    : 'border-blue-200 bg-blue-50'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {allPiecesVerified() ? (
+                      allPiecesConformes() ? (
+                        <>
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <p className="text-sm font-medium text-green-800">
+                            Toutes les pièces sont conformes - Vous pouvez valider la demande
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="h-5 w-5 text-orange-600" />
+                          <p className="text-sm font-medium text-orange-800">
+                            Certaines pièces ne sont pas conformes - Vous pouvez signaler à l'appelé
+                          </p>
+                        </>
+                      )
+                    ) : (
+                      <>
+                        <Clock className="h-5 w-5 text-blue-600" />
+                        <p className="text-sm font-medium text-blue-800">
+                          Vérifiez toutes les pièces pour débloquer les actions
+                        </p>
+                      </>
+                    )}
                   </div>
-                ))}
-              </div>
+                </div>
+              </>
             ) : (
-              <p className="text-muted-foreground">Aucune pièce vérifiée</p>
+              <p className="text-muted-foreground">Aucune pièce à vérifier</p>
             )}
           </CardContent>
         </Card>
@@ -363,14 +595,14 @@ export default function DemandeDetailPage({ params }: { params: { id: string } }
       <ValidationDialog
         open={validationOpen}
         onOpenChange={setValidationOpen}
-        demandeId={params.id}
+        demandeId={id}
         onSuccess={fetchDemande}
       />
 
       <RejectionDialog
         open={rejectionOpen}
         onOpenChange={setRejectionOpen}
-        demandeId={params.id}
+        demandeId={id}
         onSuccess={fetchDemande}
       />
 

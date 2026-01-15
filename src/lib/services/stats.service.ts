@@ -51,20 +51,20 @@ export class StatsService {
         ] = await Promise.all([
             prisma.attestation.count(),
             prisma.attestation.count({
-                where: { statut: 'GENEREE' },
+                where: { statut: StatutAttestation.GENEREE },
             }),
             prisma.attestation.count({
-                where: { statut: 'SIGNEE' },
+                where: { statut: StatutAttestation.SIGNEE },
             }),
             prisma.attestation.count({
                 where: {
-                    statut: 'SIGNEE',
+                    statut: StatutAttestation.SIGNEE,
                     dateSignature: { gte: startOfToday },
                 },
             }),
             prisma.attestation.count({
                 where: {
-                    statut: 'SIGNEE',
+                    statut: StatutAttestation.SIGNEE,
                     dateSignature: { gte: startOfMonth },
                 },
             }),
@@ -75,13 +75,13 @@ export class StatsService {
             await Promise.all([
                 prisma.demande.count(),
                 prisma.demande.count({
-                    where: { statut: 'EN_COURS' },
+                    where: { statut: StatutDemande.EN_TRAITEMENT },
                 }),
                 prisma.demande.count({
-                    where: { statut: 'VALIDEE' },
+                    where: { statut: StatutDemande.VALIDEE },
                 }),
                 prisma.demande.count({
-                    where: { statut: 'REJETEE' },
+                    where: { statut: StatutDemande.REJETEE },
                 }),
             ]);
 
@@ -101,21 +101,12 @@ export class StatsService {
         const evolutionMensuelle = this.groupByMonth(evolutionData);
 
         // Statistiques par promotion
-        const parPromotionData = await prisma.demande.groupBy({
-            by: ['appele'],
-            _count: true,
-            where: {
-                attestation: { isNot: null },
-            },
-        });
-
-        // Extraire les promotions (nécessite une jointure)
         const parPromotion = await this.getStatsByPromotion();
 
         // Alertes
         const dossiersAnciens = await prisma.attestation.count({
             where: {
-                statut: 'GENEREE',
+                statut: StatutAttestation.GENEREE,
                 dateGeneration: { lt: sevenDaysAgo },
             },
         });
@@ -176,9 +167,9 @@ export class StatsService {
     private async getStatsByPromotion(): Promise<{ promotion: string; count: number }[]> {
         const result = await prisma.$queryRaw<{ promotion: string; count: bigint }[]>`
       SELECT a.promotion, COUNT(*)::int as count
-      FROM demandes d
-      INNER JOIN appeles a ON d."appeleId" = a.id
-      WHERE d."attestationId" IS NOT NULL
+      FROM appeles a
+      INNER JOIN demandes d ON a."demandeId" = d.id
+      INNER JOIN attestations att ON d.id = att."demandeId"
       GROUP BY a.promotion
       ORDER BY count DESC
       LIMIT 10

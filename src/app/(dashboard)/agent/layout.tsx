@@ -19,5 +19,6 @@ export default async function AgentLayout({
         redirect("/")
     }
 
-    return <>{children}</>
+    // Le layout parent (dashboard) gère déjà le Sidebar et Header
+    return children
 }

@@ -1,16 +1,16 @@
 /**
- * Queue de notifications asynchrones avec Bull et Redis
+ * Queue de notifications asynchrones avec BullMQ et Redis
  * Permet de traiter les envois de notifications en arrière-plan
  * Basé sur le Prompt 6.1 - Services de Notification
  */
 
-import Queue, { Job } from 'bull';
+import { Queue, Worker, Job } from 'bullmq';
 import { notificationService } from './notification.service';
 import { TypeNotification, NotificationData } from './templates';
 import { CanalNotification } from '@prisma/client';
 
 // Configuration Redis
-const redisConfig = {
+const redisConnection = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379'),
   password: process.env.REDIS_PASSWORD,
@@ -28,63 +28,66 @@ export interface NotificationJob {
  * Queue pour les notifications
  */
 export const notificationQueue = new Queue<NotificationJob>('notifications', {
-  redis: redisConfig,
+  connection: redisConnection,
   defaultJobOptions: {
-    attempts: 3, // Nombre de tentatives en cas d'échec
+    attempts: 3,
     backoff: {
-      type: 'exponential', // Délai exponentiel entre les tentatives
-      delay: 5000, // Délai initial de 5 secondes
+      type: 'exponential',
+      delay: 5000,
     },
-    removeOnComplete: 100, // Garder les 100 derniers jobs complétés
-    removeOnFail: 500, // Garder les 500 derniers jobs échoués
+    removeOnComplete: 100,
+    removeOnFail: 500,
   },
 });
 
 /**
- * Traitement des jobs de notification
+ * Worker pour le traitement des jobs de notification
  */
-notificationQueue.process(async (job: Job<NotificationJob>) => {
-  const { demandeId, type, canaux, data, messagePersonnalise } = job.data;
+export const notificationWorker = new Worker<NotificationJob>(
+  'notifications',
+  async (job: Job<NotificationJob>) => {
+    const { demandeId, type, canaux, data, messagePersonnalise } = job.data;
 
-  console.log(`Traitement notification pour demande ${demandeId}...`);
+    console.log(`Traitement notification pour demande ${demandeId}...`);
 
-  try {
-    const results = await notificationService.send({
-      demandeId,
-      type,
-      canaux,
-      data,
-      messagePersonnalise,
-    });
+    try {
+      const results = await notificationService.send({
+        demandeId,
+        type,
+        canaux,
+        data,
+        messagePersonnalise,
+      });
 
-    // Vérifier si au moins un canal a réussi
-    const hasSuccess = results.some((r) => r.success);
+      // Vérifier si au moins un canal a réussi
+      const hasSuccess = results.some((r) => r.success);
 
-    if (!hasSuccess) {
-      throw new Error('Échec de tous les canaux de notification');
+      if (!hasSuccess) {
+        throw new Error('Échec de tous les canaux de notification');
+      }
+
+      console.log(`Notification envoyée pour demande ${demandeId}`);
+      return results;
+    } catch (error) {
+      console.error(`Erreur traitement notification pour demande ${demandeId}:`, error);
+      throw error; // Will trigger retry
     }
-
-    console.log(`Notification envoyée pour demande ${demandeId}`);
-    return results;
-  } catch (error) {
-    console.error(`Erreur traitement notification pour demande ${demandeId}:`, error);
-    throw error; // Will trigger retry
+  },
+  {
+    connection: redisConnection,
+    concurrency: 10,
   }
-});
+);
 
 /**
- * Événements de la queue
+ * Événements du worker
  */
-notificationQueue.on('completed', (job: Job, result: any) => {
-  console.log(`✓ Job ${job.id} complété:`, result);
+notificationWorker.on('completed', (job) => {
+  console.log(`✓ Job ${job.id} complété`);
 });
 
-notificationQueue.on('failed', (job: Job, err: Error) => {
-  console.error(`✗ Job ${job.id} échoué:`, err.message);
-});
-
-notificationQueue.on('stalled', (job: Job) => {
-  console.warn(`⚠ Job ${job.id} bloqué`);
+notificationWorker.on('failed', (job, err) => {
+  console.error(`✗ Job ${job?.id} échoué:`, err.message);
 });
 
 /**
@@ -97,7 +100,7 @@ export async function enqueueNotification(
     priority?: number; // Priorité (1-10, 1 = haute)
   }
 ): Promise<Job<NotificationJob>> {
-  return notificationQueue.add(jobData, {
+  return notificationQueue.add('send-notification', jobData, {
     delay: options?.delay,
     priority: options?.priority,
   });
@@ -146,7 +149,7 @@ export async function getQueueStats() {
  * Vide la queue (à utiliser avec précaution)
  */
 export async function clearQueue() {
-  await notificationQueue.empty();
+  await notificationQueue.drain();
   console.log('Queue vidée');
 }
 

@@ -4,13 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
@@ -82,8 +81,8 @@ export async function GET(request: NextRequest) {
       logs.forEach((log) => {
         const row = [
           new Date(log.createdAt).toLocaleString('fr-FR'),
-          `${log.user.prenom} ${log.user.nom}`,
-          log.user.email,
+          log.user ? `${log.user.prenom} ${log.user.nom}` : 'Utilisateur supprimé',
+          log.user?.email || 'N/A',
           log.action,
           log.demandeId || '',
           log.details ? JSON.stringify(log.details).replace(/,/g, ';') : '',

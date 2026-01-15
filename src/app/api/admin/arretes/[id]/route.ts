@@ -17,7 +17,7 @@ const updateArreteSchema = z.object({
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await auth();
@@ -29,7 +29,8 @@ export async function GET(
             );
         }
 
-        const arrete = await arreteService.getArreteById(params.id);
+        const { id } = await params;
+        const arrete = await arreteService.getArreteById(id);
 
         if (!arrete) {
             return NextResponse.json(
@@ -55,7 +56,7 @@ export async function GET(
  */
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await auth();
@@ -70,7 +71,8 @@ export async function PUT(
         const body = await request.json();
         const validatedData = updateArreteSchema.parse(body);
 
-        const arrete = await arreteService.updateArrete(params.id, validatedData);
+        const { id } = await params;
+        const arrete = await arreteService.updateArrete(id, validatedData);
 
         return NextResponse.json({
             success: true,
@@ -83,7 +85,7 @@ export async function PUT(
 
         if (error instanceof z.ZodError) {
             return NextResponse.json(
-                { error: 'Données invalides', details: error.errors },
+                { error: 'Données invalides', details: error.issues },
                 { status: 400 }
             );
         }
@@ -101,7 +103,7 @@ export async function PUT(
  */
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await auth();
@@ -113,7 +115,8 @@ export async function DELETE(
             );
         }
 
-        await arreteService.deleteArrete(params.id);
+        const { id } = await params;
+        await arreteService.deleteArrete(id);
 
         return NextResponse.json({
             success: true,

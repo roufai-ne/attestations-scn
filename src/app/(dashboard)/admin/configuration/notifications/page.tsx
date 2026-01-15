@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Mail, Phone, MessageSquare, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Mail, Phone, MessageSquare, CheckCircle, XCircle, Loader2, FileText } from 'lucide-react';
 
 interface ConfigSmtp {
   host: string;
@@ -43,6 +44,7 @@ interface ConfigWhatsApp {
 }
 
 export default function NotificationsConfigPage() {
+  const router = useRouter();
   const [smtp, setSmtp] = useState<ConfigSmtp>({
     host: '',
     port: '587',
@@ -87,9 +89,31 @@ export default function NotificationsConfigPage() {
       const response = await fetch('/api/admin/config/notifications');
       if (response.ok) {
         const config = await response.json();
-        if (config.smtp) setSmtp(config.smtp);
-        if (config.sms) setSms(config.sms);
-        if (config.whatsapp) setWhatsapp(config.whatsapp);
+        if (config.smtp) {
+          setSmtp({
+            host: config.smtp.host || '',
+            port: config.smtp.port || '587',
+            secure: config.smtp.secure || 'false',
+            user: config.smtp.user || '',
+            pass: config.smtp.pass || '',
+          });
+        }
+        if (config.sms) {
+          setSms({
+            provider: config.sms.provider || 'twilio',
+            twilioAccountSid: config.sms.twilioAccountSid || '',
+            twilioAuthToken: config.sms.twilioAuthToken || '',
+            twilioPhoneNumber: config.sms.twilioPhoneNumber || '',
+            apiUrl: config.sms.apiUrl || '',
+            apiKey: config.sms.apiKey || '',
+          });
+        }
+        if (config.whatsapp) {
+          setWhatsapp({
+            phoneNumberId: config.whatsapp.phoneNumberId || '',
+            accessToken: config.whatsapp.accessToken || '',
+          });
+        }
       }
     } catch (error) {
       console.error('Erreur chargement config:', error);
@@ -182,11 +206,17 @@ export default function NotificationsConfigPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Configuration des Notifications</h1>
-        <p className="text-gray-500 mt-2">
-          Configurez les paramètres d'envoi pour Email, SMS et WhatsApp
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Configuration des Notifications</h1>
+          <p className="text-gray-500 mt-2">
+            Configurez les paramètres d'envoi pour Email, SMS et WhatsApp
+          </p>
+        </div>
+        <Button onClick={() => router.push('/admin/configuration/notifications/templates')}>
+          <FileText className="h-4 w-4 mr-2" />
+          Gérer les templates
+        </Button>
       </div>
 
       {/* Configuration SMTP / Email */}

@@ -7,7 +7,7 @@ import { attestationService } from '@/lib/services/attestation.service';
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: { code: string } }
+    { params }: { params: Promise<{ code: string }> }
 ) {
     try {
         const searchParams = request.nextUrl.searchParams;
@@ -21,9 +21,11 @@ export async function GET(
             );
         }
 
+        const { code } = await params;
+
         // Valider l'attestation
         const result = await attestationService.validateAttestation(
-            params.code,
+            code,
             signature,
             parseInt(timestamp)
         );

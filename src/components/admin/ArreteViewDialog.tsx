@@ -20,14 +20,14 @@ interface ArreteViewDialogProps {
   arreteId: string | null;
 }
 
-const statutColors = {
+const statutColors: Record<string, string> = {
   EN_ATTENTE: 'bg-yellow-100 text-yellow-800',
   EN_COURS: 'bg-blue-100 text-blue-800',
   INDEXE: 'bg-green-100 text-green-800',
   ERREUR: 'bg-red-100 text-red-800',
 };
 
-const statutLabels = {
+const statutLabels: Record<string, string> = {
   EN_ATTENTE: 'En attente',
   EN_COURS: 'En cours',
   INDEXE: 'Indexé',

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { demandeSchema } from "@/lib/validations/demande"
-import { StatutDemande } from "@prisma/client"
+import { StatutDemande, CanalNotification } from "@prisma/client"
+import { TypeNotification } from "@/lib/notifications/templates"
 
 // POST /api/demandes - Créer une nouvelle demande
 export async function POST(request: NextRequest) {
@@ -90,6 +91,35 @@ export async function POST(request: NextRequest) {
             },
         })
 
+        // Envoyer notification de confirmation de dépôt (si demandé)
+        const envoyerNotification = validatedData.envoyerNotification !== false;
+        if (envoyerNotification) {
+            try {
+                if (demande.appele?.email || demande.appele?.telephone) {
+                    const { notificationService } = await import('@/lib/notifications/notification.service')
+
+                    const canaux: CanalNotification[] = []
+                    if (demande.appele.email) canaux.push(CanalNotification.EMAIL)
+                    if (demande.appele.telephone) canaux.push(CanalNotification.SMS)
+
+                    await notificationService.send({
+                        demandeId: demande.id,
+                        type: TypeNotification.CONFIRMATION_DEPOT,
+                        canaux,
+                        data: {
+                            numeroEnregistrement: demande.numeroEnregistrement,
+                            nom: demande.appele.nom,
+                            prenom: demande.appele.prenom,
+                            dateEnregistrement: new Date(demande.dateEnregistrement).toLocaleDateString('fr-FR'),
+                        },
+                    })
+                }
+            } catch (notifError) {
+                console.error('Erreur envoi notification confirmation dépôt:', notifError)
+                // Ne pas bloquer la création si la notification échoue
+            }
+        }
+
         return NextResponse.json(demande, { status: 201 })
     } catch (error) {
         console.error("Erreur création demande:", error)
@@ -123,6 +153,8 @@ export async function GET(request: NextRequest) {
         const search = searchParams.get("search")
         const dateDebut = searchParams.get("dateDebut")
         const dateFin = searchParams.get("dateFin")
+        const structure = searchParams.get("structure")
+        const diplome = searchParams.get("diplome")
 
         const where: any = {}
 
@@ -130,10 +162,19 @@ export async function GET(request: NextRequest) {
             where.statut = statut
         }
 
+        // Construire les filtres sur l'appelé
+        const appeleFilters: any = {}
         if (promotion) {
-            where.appele = {
-                promotion,
-            }
+            appeleFilters.promotion = promotion
+        }
+        if (structure) {
+            appeleFilters.structure = { contains: structure, mode: "insensitive" }
+        }
+        if (diplome) {
+            appeleFilters.diplome = diplome
+        }
+        if (Object.keys(appeleFilters).length > 0) {
+            where.appele = appeleFilters
         }
 
         if (search) {
@@ -141,6 +182,7 @@ export async function GET(request: NextRequest) {
                 { numeroEnregistrement: { contains: search, mode: "insensitive" } },
                 { appele: { nom: { contains: search, mode: "insensitive" } } },
                 { appele: { prenom: { contains: search, mode: "insensitive" } } },
+                { appele: { telephone: { contains: search, mode: "insensitive" } } },
             ]
         }
 

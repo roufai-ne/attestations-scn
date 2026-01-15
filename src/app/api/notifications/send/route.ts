@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { enqueueNotification } from '@/lib/notifications';
 import { TypeNotification } from '@/lib/notifications/templates';
 import { CanalNotification } from '@prisma/client';
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Données invalides', details: validation.error.errors },
+        { error: 'Données invalides', details: validation.error.issues },
         { status: 400 }
       );
     }

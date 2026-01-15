@@ -11,6 +11,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 interface SearchResult {
     id: string;
     numero: string;
+    dateArrete: Date | string;
     promotion: string;
     annee: string;
     excerpt: string;
@@ -18,7 +19,8 @@ interface SearchResult {
 
 interface ArreteSearchInputProps {
     value?: string;
-    onChange?: (numero: string) => void;
+    dateValue?: string;
+    onChange?: (numero: string, dateArrete: string) => void;
     onSelect?: (result: SearchResult) => void;
 }
 
@@ -72,7 +74,10 @@ export function ArreteSearchInput({ value, onChange, onSelect }: ArreteSearchInp
     const handleSelect = (result: SearchResult) => {
         setQuery('');
         setShowResults(false);
-        onChange?.(result.numero);
+        const dateStr = result.dateArrete instanceof Date 
+            ? result.dateArrete.toISOString().split('T')[0] 
+            : new Date(result.dateArrete).toISOString().split('T')[0];
+        onChange?.(result.numero, dateStr);
         onSelect?.(result);
     };
 
@@ -121,6 +126,9 @@ export function ArreteSearchInput({ value, onChange, onSelect }: ArreteSearchInp
                                             <Badge variant="secondary" className="text-xs">
                                                 {result.promotion}
                                             </Badge>
+                                            <span className="text-xs text-gray-500">
+                                                {new Date(result.dateArrete).toLocaleDateString('fr-FR')}
+                                            </span>
                                         </div>
                                         <div
                                             className="text-sm text-gray-600 line-clamp-2"

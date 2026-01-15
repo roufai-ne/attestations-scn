@@ -252,11 +252,12 @@ export class SignatureService {
             },
         });
 
-        // Mettre à jour le statut de la demande
+        // Mettre à jour le statut de la demande (SIGNEE après signature)
         await prisma.demande.update({
             where: { id: updated.demandeId },
             data: {
-                statut: 'EN_ATTENTE_SIGNATURE',
+                statut: 'SIGNEE',
+                dateSignature: new Date(),
             },
         });
 

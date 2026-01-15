@@ -28,8 +28,8 @@ export default function AuditPage() {
 
   // Filtres
   const [filters, setFilters] = useState({
-    userId: '',
-    action: '',
+    userId: 'ALL',
+    action: 'ALL',
     dateDebut: '',
     dateFin: '',
     demandeId: '',
@@ -134,7 +134,7 @@ export default function AuditPage() {
   };
 
   const actionOptions = [
-    { value: '', label: 'Toutes les actions' },
+    { value: 'ALL', label: 'Toutes les actions' },
     { value: 'USER_LOGIN', label: 'Connexion utilisateur' },
     { value: 'USER_LOGOUT', label: 'Déconnexion utilisateur' },
     { value: 'USER_CREATED', label: 'Création utilisateur' },
@@ -182,7 +182,7 @@ export default function AuditPage() {
                   <SelectValue placeholder="Tous les utilisateurs" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les utilisateurs</SelectItem>
+                  <SelectItem value="ALL">Tous les utilisateurs</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.prenom} {user.nom} ({user.email})

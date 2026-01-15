@@ -8,8 +8,9 @@ export const demandeSchema = z.object({
         .string()
         .min(1, "Le numéro d'enregistrement est requis")
         .max(50, "Le numéro d'enregistrement est trop long"),
-    dateEnregistrement: z.date({
+    dateEnregistrement: z.coerce.date({
         required_error: "La date d'enregistrement est requise",
+        invalid_type_error: "Date d'enregistrement invalide",
     }),
 
     // Section Informations de l'appelé
@@ -23,8 +24,9 @@ export const demandeSchema = z.object({
         .min(1, "Le prénom est requis")
         .max(100, "Le prénom est trop long")
         .transform((val) => val.charAt(0).toUpperCase() + val.slice(1).toLowerCase()),
-    dateNaissance: z.date({
+    dateNaissance: z.coerce.date({
         required_error: "La date de naissance est requise",
+        invalid_type_error: "Date de naissance invalide",
     }),
     lieuNaissance: z
         .string()
@@ -45,7 +47,7 @@ export const demandeSchema = z.object({
         .regex(/^\+227\d{8}$/, "Format: +227XXXXXXXX")
         .optional()
         .or(z.literal("")),
-    whatsappIdentique: z.boolean().default(false),
+    whatsappIdentique: z.boolean(),
 
     // Section Service civique
     diplome: z
@@ -66,11 +68,13 @@ export const demandeSchema = z.object({
         .max(200, "Le nom de la structure est trop long")
         .optional()
         .or(z.literal("")),
-    dateDebutService: z.date({
+    dateDebutService: z.coerce.date({
         required_error: "La date de début de service est requise",
+        invalid_type_error: "Date de début de service invalide",
     }),
-    dateFinService: z.date({
+    dateFinService: z.coerce.date({
         required_error: "La date de fin de service est requise",
+        invalid_type_error: "Date de fin de service invalide",
     }),
 
     // Section Pièces du dossier

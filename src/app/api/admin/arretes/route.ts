@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { arreteService } from '@/lib/services/arrete.service';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -20,7 +19,7 @@ const createArreteSchema = z.object({
  */
 export async function GET(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await auth();
 
         if (!session || session.user.role !== 'ADMIN') {
             return NextResponse.json(
@@ -63,7 +62,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await auth();
 
         if (!session || session.user.role !== 'ADMIN') {
             return NextResponse.json(
@@ -139,7 +138,7 @@ export async function POST(request: NextRequest) {
 
         if (error instanceof z.ZodError) {
             return NextResponse.json(
-                { error: 'Données invalides', details: error.errors },
+                { error: 'Données invalides', details: error.issues },
                 { status: 400 }
             );
         }
@@ -150,10 +149,3 @@ export async function POST(request: NextRequest) {
         );
     }
 }
-
-// Configuration pour accepter les fichiers
-export const config = {
-    api: {
-        bodyParser: false,
-    },
-};

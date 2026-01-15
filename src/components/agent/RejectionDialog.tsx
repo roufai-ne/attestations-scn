@@ -12,8 +12,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { XCircle } from 'lucide-react';
+import { XCircle, Bell } from 'lucide-react';
 
 interface RejectionDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ interface RejectionDialogProps {
 
 export function RejectionDialog({ open, onOpenChange, demandeId, onSuccess }: RejectionDialogProps) {
   const [motif, setMotif] = useState('');
+  const [envoyerNotification, setEnvoyerNotification] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const handleReject = async () => {
@@ -37,7 +39,7 @@ export function RejectionDialog({ open, onOpenChange, demandeId, onSuccess }: Re
       const response = await fetch(`/api/demandes/${demandeId}/rejeter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ motif }),
+        body: JSON.stringify({ motif, envoyerNotification }),
       });
 
       if (response.ok) {
@@ -86,6 +88,18 @@ export function RejectionDialog({ open, onOpenChange, demandeId, onSuccess }: Re
             <p className="text-sm text-muted-foreground mt-1">
               Soyez précis pour permettre à l'appelé de corriger sa demande
             </p>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 rounded-lg border">
+            <Checkbox
+              id="envoyerNotification"
+              checked={envoyerNotification}
+              onCheckedChange={(checked) => setEnvoyerNotification(checked as boolean)}
+            />
+            <Label htmlFor="envoyerNotification" className="flex items-center gap-2 cursor-pointer">
+              <Bell className="h-4 w-4" />
+              Envoyer une notification à l'appelé
+            </Label>
           </div>
 
           <div className="bg-red-50 p-4 rounded-lg border border-red-200">

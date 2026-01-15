@@ -19,8 +19,8 @@ export function ReportFilters({ reportType, onExport, loading }: ReportFiltersPr
     dateDebut: '',
     dateFin: '',
     statut: 'TOUS',
-    promotion: '',
-    agentId: '',
+    promotion: 'ALL',
+    agentId: 'ALL',
     typeSignature: 'TOUS',
   });
 
@@ -62,7 +62,7 @@ export function ReportFilters({ reportType, onExport, loading }: ReportFiltersPr
     // Nettoyer les filtres vides
     const cleanFilters: any = {};
     Object.keys(filters).forEach((key) => {
-      if (filters[key] && filters[key] !== 'TOUS') {
+      if (filters[key] && filters[key] !== 'TOUS' && filters[key] !== 'ALL') {
         cleanFilters[key] = filters[key];
       }
     });
@@ -122,7 +122,7 @@ export function ReportFilters({ reportType, onExport, loading }: ReportFiltersPr
                   <SelectValue placeholder="Toutes les promotions" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Toutes les promotions</SelectItem>
+                  <SelectItem value="ALL">Toutes les promotions</SelectItem>
                   {promotions.map((promo) => (
                     <SelectItem key={promo} value={promo}>
                       {promo}
@@ -139,7 +139,7 @@ export function ReportFilters({ reportType, onExport, loading }: ReportFiltersPr
                   <SelectValue placeholder="Tous les agents" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les agents</SelectItem>
+                  <SelectItem value="ALL">Tous les agents</SelectItem>
                   {agents.map((agent) => (
                     <SelectItem key={agent.id} value={agent.id}>
                       {agent.prenom} {agent.nom}

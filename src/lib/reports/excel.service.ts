@@ -3,7 +3,7 @@
  * Génère des fichiers .xlsx pour les rapports
  */
 
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 export interface ExportColumn {
   header: string;
@@ -15,38 +15,42 @@ export class ExcelService {
   /**
    * Exporte des données vers un fichier Excel
    */
-  static exportToExcel(
+  static async exportToExcel(
     data: any[],
     columns: ExportColumn[],
     fileName: string
-  ): Buffer {
-    // Préparer les données pour l'export
-    const exportData = data.map((row) => {
+  ): Promise<Buffer> {
+    // Créer le workbook et worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Rapport');
+
+    // Définir les colonnes avec headers et largeurs
+    worksheet.columns = columns.map((col) => ({
+      header: col.header,
+      key: col.key,
+      width: col.width || 15,
+    }));
+
+    // Ajouter les données
+    data.forEach((row) => {
       const exportRow: any = {};
       columns.forEach((col) => {
-        exportRow[col.header] = row[col.key] || '';
+        exportRow[col.key] = row[col.key] || '';
       });
-      return exportRow;
+      worksheet.addRow(exportRow);
     });
 
-    // Créer le workbook et worksheet
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Rapport');
-
-    // Définir les largeurs de colonnes
-    const colWidths = columns.map((col) => ({
-      wch: col.width || 15,
-    }));
-    worksheet['!cols'] = colWidths;
+    // Styliser l'en-tête
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' },
+    };
 
     // Générer le buffer
-    const buffer = XLSX.write(workbook, {
-      type: 'buffer',
-      bookType: 'xlsx',
-    });
-
-    return buffer as Buffer;
+    const arrayBuffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(arrayBuffer);
   }
 
   /**
@@ -60,7 +64,7 @@ export class ExcelService {
   /**
    * Exporte un rapport de demandes
    */
-  static exportDemandesReport(demandes: any[]): Buffer {
+  static async exportDemandesReport(demandes: any[]): Promise<Buffer> {
     const columns: ExportColumn[] = [
       { header: 'N° Enregistrement', key: 'numeroEnregistrement', width: 20 },
       { header: 'Nom', key: 'appelNom', width: 20 },
@@ -89,7 +93,7 @@ export class ExcelService {
   /**
    * Exporte un rapport d'attestations
    */
-  static exportAttestationsReport(attestations: any[]): Buffer {
+  static async exportAttestationsReport(attestations: any[]): Promise<Buffer> {
     const columns: ExportColumn[] = [
       { header: 'N° Attestation', key: 'numero', width: 20 },
       { header: 'Nom', key: 'appelNom', width: 20 },
@@ -118,7 +122,7 @@ export class ExcelService {
   /**
    * Exporte un rapport d'activité des agents
    */
-  static exportAgentsReport(agents: any[]): Buffer {
+  static async exportAgentsReport(agents: any[]): Promise<Buffer> {
     const columns: ExportColumn[] = [
       { header: 'Agent', key: 'nom', width: 30 },
       { header: 'Demandes traitées', key: 'demandesTraitees', width: 20 },

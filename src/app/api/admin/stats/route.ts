@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
       demandesParMois,
       agentsStats,
       promotionsStats,
-      tempsTraitement,
     ] = await Promise.all([
       // Total des demandes
       prisma.demande.count(),
@@ -77,16 +76,6 @@ export async function GET(request: NextRequest) {
           },
         },
         take: 5,
-      }),
-
-      // Temps moyen de traitement (en jours)
-      prisma.demande.aggregate({
-        where: {
-          dateValidation: { not: null },
-        },
-        _avg: {
-          dateEnregistrement: true,
-        },
       }),
     ]);
 

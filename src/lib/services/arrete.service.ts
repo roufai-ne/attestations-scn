@@ -199,6 +199,7 @@ export class ArreteService {
       SELECT 
         id,
         numero,
+        "dateArrete",
         promotion,
         annee,
         ts_headline('french', "contenuOCR", to_tsquery('french', ${searchQuery}), 

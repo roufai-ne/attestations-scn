@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { signatureService } from '@/lib/services/signature.service';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -11,7 +10,7 @@ import path from 'path';
  */
 export async function GET(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await auth();
 
         if (!session || session.user.role !== 'DIRECTEUR') {
             return NextResponse.json(
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await auth();
 
         if (!session || session.user.role !== 'DIRECTEUR') {
             return NextResponse.json(

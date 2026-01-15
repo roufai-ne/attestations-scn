@@ -4,12 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { notificationService } from '@/lib/notifications';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { demandeId: string } }
+  { params }: { params: Promise<{ demandeId: string }> }
 ) {
   try {
     // Vérifier l'authentification
@@ -21,7 +21,7 @@ export async function GET(
       );
     }
 
-    const { demandeId } = params;
+    const { demandeId } = await params;
 
     if (!demandeId) {
       return NextResponse.json(

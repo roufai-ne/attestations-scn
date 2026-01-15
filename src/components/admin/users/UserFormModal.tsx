@@ -84,7 +84,8 @@ export function UserFormModal({ open, onOpenChange, user, onSuccess }: UserFormM
             <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="AGENT">Agent</SelectItem>
+                <SelectItem value="SAISIE">Agent de saisie</SelectItem>
+                <SelectItem value="AGENT">Agent traitant</SelectItem>
                 <SelectItem value="DIRECTEUR">Directeur</SelectItem>
                 <SelectItem value="ADMIN">Administrateur</SelectItem>
               </SelectContent>

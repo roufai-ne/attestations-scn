@@ -8,12 +8,14 @@ export default async function LoginPage() {
     // Si déjà connecté, rediriger selon le rôle
     if (session?.user) {
         switch (session.user.role) {
+            case "SAISIE":
+                redirect("/saisie/dashboard")
             case "AGENT":
-                redirect("/agent")
+                redirect("/agent/dashboard")
             case "DIRECTEUR":
-                redirect("/directeur")
+                redirect("/directeur/dashboard")
             case "ADMIN":
-                redirect("/admin")
+                redirect("/admin/dashboard")
             default:
                 redirect("/")
         }

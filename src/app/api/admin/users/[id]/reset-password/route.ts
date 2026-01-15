@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth.config';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/password';
 import { auditService, AuditAction } from '@/lib/audit';
@@ -16,7 +16,7 @@ const resetPasswordSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -24,12 +24,14 @@ export async function POST(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
+    const { id } = await params;
+
     const body = await request.json();
     const validation = resetPasswordSchema.safeParse(body);
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Données invalides', details: validation.error.errors },
+        { error: 'Données invalides', details: validation.error.issues },
         { status: 400 }
       );
     }
@@ -38,7 +40,7 @@ export async function POST(
 
     // Vérifier que l'utilisateur existe
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!user) {
@@ -53,7 +55,7 @@ export async function POST(
 
     // Mettre à jour le mot de passe
     await prisma.user.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { password: hashedPassword },
     });
 
@@ -62,7 +64,7 @@ export async function POST(
       action: AuditAction.USER_PASSWORD_RESET,
       userId: session.user.id!,
       details: {
-        targetUserId: params.id,
+        targetUserId: id,
         targetUserEmail: user.email,
       },
       ipAddress: request.headers.get('x-forwarded-for') || undefined,
