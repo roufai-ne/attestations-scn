@@ -123,6 +123,12 @@ const navItems: NavItem[] = [
         icon: FileSignature,
         roles: ['ADMIN'],
     },
+    {
+        title: 'Templates',
+        href: '/admin/templates',
+        icon: FileText,
+        roles: ['ADMIN'],
+    },
 ];
 
 export function Sidebar() {
@@ -168,7 +174,7 @@ export function Sidebar() {
                     <div className="p-6 border-b border-gray-200">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 min-w-0">
-                                <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex-shrink-0 shadow-lg">
+                                <div className="p-2.5 bg-gradient-to-br from-green-600 to-orange-600 rounded-xl flex-shrink-0 shadow-lg">
                                     <Shield className="h-6 w-6 text-white" />
                                 </div>
                                 {!collapsed && (
@@ -183,17 +189,17 @@ export function Sidebar() {
 
                     {/* User info card */}
                     {!collapsed && (
-                        <div className="p-4 m-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                        <div className="p-4 m-4 bg-gradient-to-br from-green-50 via-white to-orange-50 rounded-xl border border-green-100">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-white rounded-lg shadow-sm">
-                                    <User className="h-5 w-5 text-blue-600" />
+                                    <User className="h-5 w-5 text-green-600" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold text-gray-900 truncate">
                                         {session.user.nom} {session.user.prenom}
                                     </p>
                                     <p className="text-xs text-gray-600 truncate">{session.user.email}</p>
-                                    <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-blue-600 text-white rounded-full">
+                                    <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-green-600 text-white rounded-full">
                                         {userRole}
                                     </span>
                                 </div>
@@ -215,7 +221,7 @@ export function Sidebar() {
                                     className={cn(
                                         'group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
                                         isActive
-                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
+                                            ? 'bg-gradient-to-r from-green-600 to-orange-600 text-white shadow-lg shadow-green-500/30'
                                             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900',
                                         collapsed && 'justify-center'
                                     )}
@@ -278,3 +284,4 @@ export function Sidebar() {
         </>
     );
 }
+

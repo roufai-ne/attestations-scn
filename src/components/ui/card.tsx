@@ -9,8 +9,8 @@ const cardVariants = cva(
     variants: {
       variant: {
         default: "border-gray-200 bg-white",
-        gradient: "border-0 bg-gradient-to-br from-blue-50 to-indigo-50",
-        outline: "border-2 border-blue-200 bg-white",
+        gradient: "border-0 bg-gradient-to-br from-green-50 via-white to-orange-50",
+        outline: "border-2 border-green-200 bg-white",
       },
       hover: {
         default: "",
@@ -100,3 +100,4 @@ const CardFooter = React.forwardRef<
 CardFooter.displayName = "CardFooter"
 
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+

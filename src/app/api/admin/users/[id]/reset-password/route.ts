@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/password';
 import { auditService, AuditAction } from '@/lib/audit';
 import { z } from 'zod';
+import { withRateLimit, errorResponse, isAdmin } from '@/lib/api-utils';
 
 const resetPasswordSchema = z.object({
   newPassword: z.string().min(8, 'Mot de passe minimum 8 caractères'),
@@ -18,10 +19,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
+  // Rate limit strict pour les opérations de mot de passe (type 'auth')
+  return withRateLimit(request, 'auth', async () => {
     const session = await auth();
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    if (!session?.user || !isAdmin(session.user.role)) {
+      return errorResponse('Non autorisé', 403);
     }
 
     const { id } = await params;
@@ -30,10 +32,7 @@ export async function POST(
     const validation = resetPasswordSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Données invalides', details: validation.error.issues },
-        { status: 400 }
-      );
+      return errorResponse('Données invalides', 400, validation.error.issues);
     }
 
     const { newPassword } = validation.data;
@@ -41,13 +40,11 @@ export async function POST(
     // Vérifier que l'utilisateur existe
     const user = await prisma.user.findUnique({
       where: { id: id },
+      select: { id: true, email: true },
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'Utilisateur non trouvé' },
-        { status: 404 }
-      );
+      return errorResponse('Utilisateur non trouvé', 404);
     }
 
     // Hasher le nouveau mot de passe
@@ -74,8 +71,5 @@ export async function POST(
       success: true,
       message: 'Mot de passe réinitialisé avec succès',
     });
-  } catch (error) {
-    console.error('Erreur reset password:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
-  }
+  });
 }

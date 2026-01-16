@@ -19,7 +19,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       title: 'Total Demandes',
       value: stats.totalDemandes,
       icon: FileText,
-      color: 'text-blue-600',
+      color: 'text-green-600',
       bgColor: 'bg-blue-100',
     },
     {
@@ -68,3 +68,4 @@ export function StatsCards({ stats }: StatsCardsProps) {
     </div>
   );
 }
+

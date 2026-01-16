@@ -73,7 +73,7 @@ export default function PiecesVerification({
                                     <input
                                         {...register(`pieces.${index}.present`)}
                                         type="checkbox"
-                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                                     />
                                     <input
                                         {...register(`pieces.${index}.type`)}
@@ -85,14 +85,14 @@ export default function PiecesVerification({
                                     <input
                                         {...register(`pieces.${index}.conforme`)}
                                         type="checkbox"
-                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                                     />
                                 </td>
                                 <td className="px-4 py-3">
                                     <input
                                         {...register(`pieces.${index}.observation`)}
                                         type="text"
-                                        className="w-full rounded-md border px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                        className="w-full rounded-md border px-2 py-1 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                         placeholder="Observation..."
                                     />
                                 </td>
@@ -114,3 +114,4 @@ export default function PiecesVerification({
         </div>
     )
 }
+

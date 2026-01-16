@@ -83,8 +83,7 @@ export const ocrWorker = new Worker<TextExtractionJobData>(
                 success: true,
                 arreteId,
                 pageCount: result.pageCount,
-                confidence: result.confidence,
-                textLength: cleanedText.length,
+                textLength: cleanedText?.length ?? 0,
             };
 
         } catch (error) {

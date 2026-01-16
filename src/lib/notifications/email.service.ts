@@ -277,6 +277,78 @@ export class EmailService {
       text: `Bonjour ${data.prenom} ${data.nom},\n\nVotre attestation de Service Civique est prête !\n\nDemande N° : ${data.numeroEnregistrement}\nAttestation N° : ${data.numeroAttestation}\n\nVous pouvez venir la retirer à nos bureaux (lundi-vendredi, 8h-16h) avec une pièce d'identité.\n\nService Civique National - République du Niger`,
     });
   }
+
+  /**
+   * Envoie un email de réinitialisation de mot de passe
+   */
+  async sendPasswordReset(
+    to: string,
+    data: {
+      nom: string;
+      prenom: string;
+      resetLink: string;
+      expiresIn: string;
+    }
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
+          .content { background: #f9fafb; padding: 20px; margin: 20px 0; }
+          .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+          .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 10px 0; }
+          .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Réinitialisation du mot de passe</h1>
+            <p>Service Civique National - République du Niger</p>
+          </div>
+
+          <div class="content">
+            <p>Bonjour <strong>${data.prenom} ${data.nom}</strong>,</p>
+
+            <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
+
+            <p style="text-align: center;">
+              <a href="${data.resetLink}" class="button">Réinitialiser mon mot de passe</a>
+            </p>
+
+            <div class="warning">
+              <strong>⚠️ Ce lien expire dans ${data.expiresIn}.</strong><br>
+              Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
+            </div>
+
+            <p style="font-size: 12px; color: #6b7280;">
+              Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
+              <code>${data.resetLink}</code>
+            </p>
+          </div>
+
+          <div class="footer">
+            <p>Ministère de la Jeunesse et des Sports<br>
+            Direction du Service Civique National<br>
+            République du Niger</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to,
+      subject: `Réinitialisation de votre mot de passe`,
+      html,
+      text: `Bonjour ${data.prenom} ${data.nom},\n\nVous avez demandé la réinitialisation de votre mot de passe.\n\nCliquez sur ce lien pour définir un nouveau mot de passe :\n${data.resetLink}\n\nCe lien expire dans ${data.expiresIn}.\n\nSi vous n'avez pas fait cette demande, ignorez cet email.\n\nService Civique National - République du Niger`,
+    });
+  }
 }
 
 // Instance singleton

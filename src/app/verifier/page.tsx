@@ -55,11 +55,11 @@ export default function VerifierPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+        <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-orange-100 py-12 px-4">
             <div className="container mx-auto max-w-2xl">
                 {/* En-tête */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 rounded-full mb-4">
                         <FileText className="h-8 w-8 text-white" />
                     </div>
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">
@@ -135,3 +135,4 @@ export default function VerifierPage() {
         </div>
     );
 }
+

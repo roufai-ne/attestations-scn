@@ -65,6 +65,11 @@ export async function POST(request: NextRequest) {
         const pin = formData.get('pin') as string;
         const positionX = formData.get('positionX') as string;
         const positionY = formData.get('positionY') as string;
+        const signatureWidth = formData.get('signatureWidth') as string;
+        const signatureHeight = formData.get('signatureHeight') as string;
+        const qrCodePositionX = formData.get('qrCodePositionX') as string;
+        const qrCodePositionY = formData.get('qrCodePositionY') as string;
+        const qrCodeSize = formData.get('qrCodeSize') as string;
 
         // Validation
         if (!signatureImage || !texteSignature || !pin) {
@@ -96,11 +101,16 @@ export async function POST(request: NextRequest) {
 
         // Créer/mettre à jour la configuration
         const config = await signatureService.createOrUpdateConfig(session.user.id, {
-            signatureImagePath: filepath,
+            signatureImagePath: `/uploads/signatures/${filename}`,
             texteSignature,
             pin,
             positionX: positionX ? parseFloat(positionX) : undefined,
             positionY: positionY ? parseFloat(positionY) : undefined,
+            signatureWidth: signatureWidth ? parseFloat(signatureWidth) : undefined,
+            signatureHeight: signatureHeight ? parseFloat(signatureHeight) : undefined,
+            qrCodePositionX: qrCodePositionX ? parseFloat(qrCodePositionX) : undefined,
+            qrCodePositionY: qrCodePositionY ? parseFloat(qrCodePositionY) : undefined,
+            qrCodeSize: qrCodeSize ? parseFloat(qrCodeSize) : undefined,
         });
 
         return NextResponse.json({

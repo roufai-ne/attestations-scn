@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { signatureService } from '@/lib/services/signature.service';
 import { TypeNotification } from '@/lib/notifications/templates';
 import { CanalNotification } from '@prisma/client';
+import { withRateLimit, errorResponse, isDirecteurOrAdmin } from '@/lib/api-utils';
 
 /**
  * POST /api/directeur/attestations/[id]/signer
@@ -12,14 +13,12 @@ export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
+    // Rate limit strict pour la signature (opération sensible)
+    return withRateLimit(request, 'generation', async () => {
         const session = await auth();
 
         if (!session || session.user.role !== 'DIRECTEUR') {
-            return NextResponse.json(
-                { error: 'Non autorisé' },
-                { status: 403 }
-            );
+            return errorResponse('Non autorisé', 403);
         }
 
         const { id } = await params;
@@ -28,10 +27,7 @@ export async function POST(
         const { pin } = body;
 
         if (!pin) {
-            return NextResponse.json(
-                { error: 'PIN manquant' },
-                { status: 400 }
-            );
+            return errorResponse('PIN manquant', 400);
         }
 
         // Signer l'attestation
@@ -94,11 +90,5 @@ export async function POST(
                 dateSignature: attestation.dateSignature,
             },
         });
-    } catch (error) {
-        console.error('Erreur lors de la signature:', error);
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Erreur serveur' },
-            { status: 500 }
-        );
-    }
+    });
 }

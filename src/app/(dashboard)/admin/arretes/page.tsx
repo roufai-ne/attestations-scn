@@ -102,7 +102,7 @@ export default function ArretesPage() {
             <Clock className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-green-600">
               {(defaultStats.byStatus.EN_ATTENTE || 0) + (defaultStats.byStatus.EN_COURS || 0)}
             </div>
             <p className="text-xs text-gray-500 mt-1">En traitement OCR</p>
@@ -138,3 +138,4 @@ export default function ArretesPage() {
     </div>
   );
 }
+

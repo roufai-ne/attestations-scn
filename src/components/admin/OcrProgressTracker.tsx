@@ -126,7 +126,7 @@ export function OcrProgressTracker({ arreteId, onComplete, onError }: OcrProgres
           ) : (
             <>
               <div className="p-2 bg-blue-100 rounded-full">
-                <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
+                <Loader2 className="h-6 w-6 text-green-600 animate-spin" />
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">Indexation en cours...</h3>
@@ -179,7 +179,7 @@ export function OcrProgressTracker({ arreteId, onComplete, onError }: OcrProgres
                       className={cn(
                         'h-4 w-4',
                         isPast && 'text-green-600',
-                        isCurrent && 'text-blue-600 animate-spin',
+                        isCurrent && 'text-green-600 animate-spin',
                         isFuture && 'text-gray-400'
                       )}
                     />
@@ -212,3 +212,4 @@ export function OcrProgressTracker({ arreteId, onComplete, onError }: OcrProgres
     </Card>
   );
 }
+

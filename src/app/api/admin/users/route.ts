@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/password';
 import { auditService, AuditAction } from '@/lib/audit';
 import { z } from 'zod';
+import { withRateLimit, errorResponse, isAdmin, getPaginationParams, paginatedResponse } from '@/lib/api-utils';
 
 // Schéma de validation pour création d'utilisateur
 const createUserSchema = z.object({
@@ -22,10 +23,10 @@ const createUserSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  try {
+  return withRateLimit(request, 'admin', async () => {
     const session = await auth();
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    if (!session?.user || !isAdmin(session.user.role)) {
+      return errorResponse('Non autorisé', 403);
     }
 
     // Paramètres de filtrage et pagination
@@ -33,9 +34,7 @@ export async function GET(request: NextRequest) {
     const role = searchParams.get('role');
     const actif = searchParams.get('actif');
     const search = searchParams.get('search');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = getPaginationParams(searchParams);
 
     // Construction de la requête
     const where: any = {};
@@ -88,27 +87,21 @@ export async function GET(request: NextRequest) {
         pages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
-    console.error('Erreur GET users:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
-  }
+  });
 }
 
 export async function POST(request: NextRequest) {
-  try {
+  return withRateLimit(request, 'admin', async () => {
     const session = await auth();
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    if (!session?.user || !isAdmin(session.user.role)) {
+      return errorResponse('Non autorisé', 403);
     }
 
     const body = await request.json();
     const validation = createUserSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Données invalides', details: validation.error.issues },
-        { status: 400 }
-      );
+      return errorResponse('Données invalides', 400, validation.error.issues);
     }
 
     const data = validation.data;
@@ -119,10 +112,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'Cet email est déjà utilisé' },
-        { status: 409 }
-      );
+      return errorResponse('Cet email est déjà utilisé', 409);
     }
 
     // Hasher le mot de passe
@@ -161,8 +151,5 @@ export async function POST(request: NextRequest) {
       success: true,
       user: newUser,
     });
-  } catch (error) {
-    console.error('Erreur POST user:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
-  }
+  });
 }

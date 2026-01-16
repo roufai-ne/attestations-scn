@@ -92,7 +92,7 @@ export default function DemandeForm() {
                         <input
                             {...register("numeroEnregistrement")}
                             type="text"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="Ex: SCN-2024-001"
                         />
                         {errors.numeroEnregistrement && (
@@ -109,7 +109,7 @@ export default function DemandeForm() {
                         <input
                             {...register("dateEnregistrement", { valueAsDate: true })}
                             type="date"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                         {errors.dateEnregistrement && (
                             <p className="mt-1 text-sm text-red-600">
@@ -131,7 +131,7 @@ export default function DemandeForm() {
                         <input
                             {...register("nom")}
                             type="text"
-                            className="w-full rounded-md border px-3 py-2 uppercase focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 uppercase focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="ABDOU"
                         />
                         {errors.nom && (
@@ -146,7 +146,7 @@ export default function DemandeForm() {
                         <input
                             {...register("prenom")}
                             type="text"
-                            className="w-full rounded-md border px-3 py-2 capitalize focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 capitalize focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="Ibrahim"
                         />
                         {errors.prenom && (
@@ -162,7 +162,7 @@ export default function DemandeForm() {
                             {...register("dateNaissance", { valueAsDate: true })}
                             type="date"
                             max={new Date().toISOString().split("T")[0]}
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                         {errors.dateNaissance && (
                             <p className="mt-1 text-sm text-red-600">
@@ -178,7 +178,7 @@ export default function DemandeForm() {
                         <input
                             {...register("lieuNaissance")}
                             type="text"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="Niamey"
                         />
                         {errors.lieuNaissance && (
@@ -193,7 +193,7 @@ export default function DemandeForm() {
                         <input
                             {...register("email")}
                             type="email"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="exemple@email.com"
                         />
                         {errors.email && (
@@ -209,7 +209,7 @@ export default function DemandeForm() {
                         <input
                             {...register("telephone")}
                             type="tel"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="+22790123456"
                         />
                         {errors.telephone && (
@@ -226,7 +226,7 @@ export default function DemandeForm() {
                             {...register("whatsapp")}
                             type="tel"
                             disabled={whatsappIdentique}
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:bg-gray-100"
                             placeholder="+22790123456"
                         />
                         {errors.whatsapp && (
@@ -266,7 +266,7 @@ export default function DemandeForm() {
                             <input
                                 {...register("diplome")}
                                 type="text"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 placeholder="Licence en Informatique"
                             />
                             {errors.diplome && (
@@ -281,7 +281,7 @@ export default function DemandeForm() {
                             <input
                                 {...register("promotion")}
                                 type="text"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 placeholder="2023"
                             />
                             {errors.promotion && (
@@ -298,7 +298,7 @@ export default function DemandeForm() {
                             <input
                                 {...register("structure")}
                                 type="text"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 placeholder="Ministère de l'Éducation"
                             />
                             {errors.structure && (
@@ -315,7 +315,7 @@ export default function DemandeForm() {
                             <input
                                 {...register("dateDebutService", { valueAsDate: true })}
                                 type="date"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
                             {errors.dateDebutService && (
                                 <p className="mt-1 text-sm text-red-600">
@@ -331,7 +331,7 @@ export default function DemandeForm() {
                             <input
                                 {...register("dateFinService", { valueAsDate: true })}
                                 type="date"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
                             {errors.dateFinService && (
                                 <p className="mt-1 text-sm text-red-600">
@@ -352,7 +352,7 @@ export default function DemandeForm() {
                 <textarea
                     {...register("observations")}
                     rows={4}
-                    className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                     placeholder="Observations générales sur le dossier..."
                 />
             </div>
@@ -362,7 +362,7 @@ export default function DemandeForm() {
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-6 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-md bg-green-600 px-6 py-2 font-medium text-white hover:bg-green-700 disabled:opacity-50"
                 >
                     {isSubmitting ? (
                         <>
@@ -388,3 +388,4 @@ export default function DemandeForm() {
         </form>
     )
 }
+

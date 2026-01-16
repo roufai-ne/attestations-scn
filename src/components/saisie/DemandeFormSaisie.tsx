@@ -19,7 +19,7 @@ const demandeSchemaSimple = z.object({
         .min(1, "Le numéro d'enregistrement est requis")
         .max(50, "Le numéro d'enregistrement est trop long"),
     dateEnregistrement: z.date({
-        error: "La date d'enregistrement est requise",
+        required_error: "La date d'enregistrement est requise",
     }),
     nom: z
         .string()
@@ -32,7 +32,7 @@ const demandeSchemaSimple = z.object({
         .max(100, "Le prénom est trop long")
         .transform((val) => val.charAt(0).toUpperCase() + val.slice(1).toLowerCase()),
     dateNaissance: z.date({
-        error: "La date de naissance est requise",
+        required_error: "La date de naissance est requise",
     }),
     lieuNaissance: z
         .string()
@@ -77,10 +77,10 @@ const demandeSchemaSimple = z.object({
         .optional()
         .or(z.literal("")),
     dateDebutService: z.date({
-        error: "La date de début de service est requise",
+        required_error: "La date de début de service est requise",
     }),
     dateFinService: z.date({
-        error: "La date de fin de service est requise",
+        required_error: "La date de fin de service est requise",
     }),
     // Pièces présentes seulement (pas de conformité)
     pieces: z.array(
@@ -195,12 +195,12 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
             )}
 
             {/* Info box */}
-            <Card className="bg-blue-50 border-blue-200">
+            <Card className="bg-green-50 border-green-200">
                 <CardContent className="py-4">
                     <div className="flex items-start gap-3">
-                        <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <Info className="h-5 w-5 text-green-600 mt-0.5" />
                         <div>
-                            <p className="text-sm text-blue-800">
+                            <p className="text-sm text-green-800">
                                 <strong>Agent de saisie :</strong> Vous pouvez saisir les informations de la demande et cocher les pièces présentes.
                                 La vérification de conformité et la validation seront effectuées par un agent traitant.
                             </p>
@@ -220,7 +220,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                         <input
                             {...register("numeroEnregistrement")}
                             type="text"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="Ex: SCN-2024-001"
                         />
                         {errors.numeroEnregistrement && (
@@ -237,7 +237,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                         <input
                             {...register("dateEnregistrement", { valueAsDate: true })}
                             type="date"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                         {errors.dateEnregistrement && (
                             <p className="mt-1 text-sm text-red-600">
@@ -259,7 +259,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                         <input
                             {...register("nom")}
                             type="text"
-                            className="w-full rounded-md border px-3 py-2 uppercase focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 uppercase focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="ABDOU"
                         />
                         {errors.nom && (
@@ -274,7 +274,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                         <input
                             {...register("prenom")}
                             type="text"
-                            className="w-full rounded-md border px-3 py-2 capitalize focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 capitalize focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="Ibrahim"
                         />
                         {errors.prenom && (
@@ -290,7 +290,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                             {...register("dateNaissance", { valueAsDate: true })}
                             type="date"
                             max={new Date().toISOString().split("T")[0]}
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                         {errors.dateNaissance && (
                             <p className="mt-1 text-sm text-red-600">
@@ -306,7 +306,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                         <input
                             {...register("lieuNaissance")}
                             type="text"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="Niamey"
                         />
                         {errors.lieuNaissance && (
@@ -321,7 +321,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                         <input
                             {...register("email")}
                             type="email"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="exemple@email.com"
                         />
                         {errors.email && (
@@ -337,7 +337,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                         <input
                             {...register("telephone")}
                             type="tel"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             placeholder="+22790123456"
                         />
                         {errors.telephone && (
@@ -354,7 +354,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                             {...register("whatsapp")}
                             type="tel"
                             disabled={whatsappIdentique}
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:bg-gray-100"
                             placeholder="+22790123456"
                         />
                         {errors.whatsapp && (
@@ -400,7 +400,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                             <input
                                 {...register("numeroArrete")}
                                 type="text"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 placeholder="Ex: N° 123/2024"
                             />
                             {errors.numeroArrete && (
@@ -418,7 +418,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                             <input
                                 {...register("dateArrete", { valueAsDate: true })}
                                 type="date"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
                             {errors.dateArrete && (
                                 <p className="mt-1 text-sm text-red-600">{errors.dateArrete.message as string}</p>
@@ -435,7 +435,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                             <input
                                 {...register("diplome")}
                                 type="text"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 placeholder="Licence en Informatique"
                             />
                             {errors.diplome && (
@@ -450,7 +450,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                             <input
                                 {...register("promotion")}
                                 type="text"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 placeholder="2023"
                             />
                             {errors.promotion && (
@@ -467,7 +467,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                             <input
                                 {...register("structure")}
                                 type="text"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 placeholder="Ministère de l'Éducation"
                             />
                             {errors.structure && (
@@ -484,7 +484,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                             <input
                                 {...register("dateDebutService", { valueAsDate: true })}
                                 type="date"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
                             {errors.dateDebutService && (
                                 <p className="mt-1 text-sm text-red-600">
@@ -500,7 +500,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                             <input
                                 {...register("dateFinService", { valueAsDate: true })}
                                 type="date"
-                                className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
                             {errors.dateFinService && (
                                 <p className="mt-1 text-sm text-red-600">
@@ -528,7 +528,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                                 type="checkbox"
                                 checked={piece.present}
                                 onChange={(e) => handlePieceChange(index, e.target.checked)}
-                                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                className="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
                             />
                             <span className="font-medium">{piecesLabels[piece.type]}</span>
                         </div>
@@ -542,7 +542,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                 <textarea
                     {...register("observations")}
                     rows={4}
-                    className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                     placeholder="Observations générales sur le dossier..."
                 />
             </div>
@@ -569,7 +569,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-6 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-md bg-green-600 px-6 py-2 font-medium text-white hover:bg-green-700 disabled:opacity-50"
                 >
                     {isSubmitting ? (
                         <>
@@ -595,3 +595,4 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
         </form>
     )
 }
+

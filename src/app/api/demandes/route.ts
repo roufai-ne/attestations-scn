@@ -91,8 +91,8 @@ export async function POST(request: NextRequest) {
             },
         })
 
-        // Envoyer notification de confirmation de dépôt (si demandé)
-        const envoyerNotification = validatedData.envoyerNotification !== false;
+        // Envoyer notification de confirmation de dépôt
+        const envoyerNotification = body.envoyerNotification !== false;
         if (envoyerNotification) {
             try {
                 if (demande.appele?.email || demande.appele?.telephone) {

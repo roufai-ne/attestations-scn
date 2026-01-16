@@ -50,7 +50,7 @@ export default function SaisieDashboardPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
             </div>
         );
     }
@@ -68,7 +68,7 @@ export default function SaisieDashboardPage() {
                     </p>
                 </div>
                 <Link href="/saisie/demandes/nouvelle">
-                    <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Button className="bg-green-600 hover:bg-green-700">
                         <Plus className="h-4 w-4 mr-2" />
                         Nouvelle demande
                     </Button>
@@ -151,7 +151,7 @@ export default function SaisieDashboardPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-blue-600" />
+                            <TrendingUp className="h-5 w-5 text-green-600" />
                             Votre activité
                         </CardTitle>
                     </CardHeader>
@@ -161,7 +161,7 @@ export default function SaisieDashboardPage() {
                                 <p className="text-sm font-medium text-gray-900">Aujourd'hui</p>
                                 <p className="text-xs text-gray-500">Demandes créées</p>
                             </div>
-                            <span className="text-2xl font-bold text-blue-600">
+                            <span className="text-2xl font-bold text-green-600">
                                 {stats?.demandesAujourdHui || 0}
                             </span>
                         </div>
@@ -199,11 +199,11 @@ export default function SaisieDashboardPage() {
             </div>
 
             {/* Info box */}
-            <Card className="bg-blue-50 border-blue-200">
+            <Card className="bg-blue-50 border-green-200">
                 <CardContent className="py-4">
                     <div className="flex items-start gap-3">
                         <div className="p-2 bg-blue-100 rounded-lg">
-                            <FileText className="h-5 w-5 text-blue-600" />
+                            <FileText className="h-5 w-5 text-green-600" />
                         </div>
                         <div>
                             <h3 className="font-medium text-blue-900">Rôle : Agent de Saisie</h3>
@@ -218,3 +218,4 @@ export default function SaisieDashboardPage() {
         </div>
     );
 }
+

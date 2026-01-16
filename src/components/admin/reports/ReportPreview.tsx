@@ -63,7 +63,7 @@ export function ReportPreview({ reportType }: ReportPreviewProps) {
       <CardHeader>
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-100 rounded-lg">
-            <Icon className="h-6 w-6 text-blue-600" />
+            <Icon className="h-6 w-6 text-green-600" />
           </div>
           <div>
             <CardTitle>{info.title}</CardTitle>
@@ -102,3 +102,4 @@ export function ReportPreview({ reportType }: ReportPreviewProps) {
     </Card>
   );
 }
+

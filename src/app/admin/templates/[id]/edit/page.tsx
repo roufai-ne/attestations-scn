@@ -1,0 +1,581 @@
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
+import { LoadingState } from '@/components/shared/LoadingState';
+import {
+    Save,
+    Eye,
+    Undo,
+    Redo,
+    ZoomIn,
+    ZoomOut,
+    Trash2,
+    GripVertical,
+    Type,
+    Calendar,
+    QrCode,
+    PenTool,
+} from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+
+interface TemplateField {
+    id: string;
+    label: string;
+    type: 'text' | 'date' | 'qrcode' | 'signature';
+    x: number;
+    y: number;
+    width?: number;
+    height?: number;
+    fontSize: number;
+    fontFamily: string;
+    fontWeight: string;
+    color: string;
+    textAlign: string;
+    format?: string;
+    prefix?: string;
+    suffix?: string;
+}
+
+interface TemplateConfig {
+    version: number;
+    backgroundImage: string;
+    pageWidth: number;
+    pageHeight: number;
+    pageOrientation: string;
+    fields: TemplateField[];
+}
+
+interface Template {
+    id: string;
+    nom: string;
+    fichierPath: string;
+    config: TemplateConfig | null;
+}
+
+// Données de test pour la prévisualisation
+const SAMPLE_DATA: Record<string, string> = {
+    numero: 'MES/IT/DGE/DESP/DAEPU/001/2026',
+    civilite: 'M.',
+    prenomNom: 'Ibrahim AMADOU',
+    dateNaissance: '15 mai 1995',
+    lieuNaissance: 'Niamey',
+    diplome: 'Licence en Informatique',
+    lieuService: 'Ministère de l\'Éducation',
+    dateDebutService: '01/01/2024',
+    dateFinService: '31/12/2024',
+    dateSignature: '15 janvier 2026',
+    nomDirecteur: 'Dr. DOUMA SOUMANA M.C',
+};
+
+export default function TemplateEditorPage() {
+    const params = useParams();
+    const router = useRouter();
+    const canvasRef = useRef<HTMLDivElement>(null);
+
+    const [template, setTemplate] = useState<Template | null>(null);
+    const [config, setConfig] = useState<TemplateConfig | null>(null);
+    const [availableFields, setAvailableFields] = useState<TemplateField[]>([]);
+    const [selectedField, setSelectedField] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [zoom, setZoom] = useState(0.8);
+    const [dragging, setDragging] = useState<string | null>(null);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+    useEffect(() => {
+        fetchTemplate();
+        fetchAvailableFields();
+    }, [params.id]);
+
+    const fetchTemplate = async () => {
+        try {
+            const response = await fetch(`/api/admin/templates/${params.id}`);
+            if (response.ok) {
+                const data = await response.json();
+                setTemplate(data);
+                setConfig(data.config || {
+                    version: 1,
+                    backgroundImage: data.fichierPath,
+                    pageWidth: 842,
+                    pageHeight: 595,
+                    pageOrientation: 'landscape',
+                    fields: [],
+                });
+            }
+        } catch (err) {
+            setError('Erreur lors du chargement');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchAvailableFields = async () => {
+        try {
+            const response = await fetch('/api/admin/templates/fields');
+            if (response.ok) {
+                const data = await response.json();
+                setAvailableFields(data);
+            }
+        } catch (err) {
+            console.error('Erreur chargement champs:', err);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!config) return;
+
+        setSaving(true);
+        setError('');
+        setSuccess('');
+
+        try {
+            const response = await fetch(`/api/admin/templates/${params.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ config }),
+            });
+
+            if (response.ok) {
+                setSuccess('Template enregistré avec succès');
+            } else {
+                const data = await response.json();
+                setError(data.error || 'Erreur lors de l\'enregistrement');
+            }
+        } catch (err) {
+            setError('Erreur de connexion');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const addField = (fieldTemplate: TemplateField) => {
+        if (!config) return;
+
+        // Vérifier si le champ existe déjà
+        if (config.fields.find((f) => f.id === fieldTemplate.id)) {
+            setError(`Le champ "${fieldTemplate.label}" est déjà ajouté`);
+            return;
+        }
+
+        const newField: TemplateField = {
+            ...fieldTemplate,
+            x: 100,
+            y: 100,
+        };
+
+        setConfig({
+            ...config,
+            fields: [...config.fields, newField],
+        });
+
+        setSelectedField(newField.id);
+    };
+
+    const removeField = (fieldId: string) => {
+        if (!config) return;
+
+        setConfig({
+            ...config,
+            fields: config.fields.filter((f) => f.id !== fieldId),
+        });
+
+        if (selectedField === fieldId) {
+            setSelectedField(null);
+        }
+    };
+
+    const updateField = (fieldId: string, updates: Partial<TemplateField>) => {
+        if (!config) return;
+
+        setConfig({
+            ...config,
+            fields: config.fields.map((f) =>
+                f.id === fieldId ? { ...f, ...updates } : f
+            ),
+        });
+    };
+
+    const handleMouseDown = (e: React.MouseEvent, fieldId: string) => {
+        e.preventDefault();
+        const field = config?.fields.find((f) => f.id === fieldId);
+        if (!field || !canvasRef.current) return;
+
+        const rect = canvasRef.current.getBoundingClientRect();
+        setDragOffset({
+            x: e.clientX / zoom - field.x,
+            y: e.clientY / zoom - field.y,
+        });
+        setDragging(fieldId);
+        setSelectedField(fieldId);
+    };
+
+    const handleMouseMove = useCallback(
+        (e: React.MouseEvent) => {
+            if (!dragging || !config || !canvasRef.current) return;
+
+            const rect = canvasRef.current.getBoundingClientRect();
+            const x = Math.max(0, (e.clientX - rect.left) / zoom - dragOffset.x);
+            const y = Math.max(0, (e.clientY - rect.top) / zoom - dragOffset.y);
+
+            updateField(dragging, { x: Math.round(x), y: Math.round(y) });
+        },
+        [dragging, zoom, dragOffset, config]
+    );
+
+    const handleMouseUp = () => {
+        setDragging(null);
+    };
+
+    const getFieldIcon = (type: string) => {
+        switch (type) {
+            case 'date':
+                return <Calendar className="h-4 w-4" />;
+            case 'qrcode':
+                return <QrCode className="h-4 w-4" />;
+            case 'signature':
+                return <PenTool className="h-4 w-4" />;
+            default:
+                return <Type className="h-4 w-4" />;
+        }
+    };
+
+    const selectedFieldData = config?.fields.find((f) => f.id === selectedField);
+
+    if (loading) {
+        return (
+            <div className="container mx-auto p-6">
+                <LoadingState type="page" />
+            </div>
+        );
+    }
+
+    if (!template || !config) {
+        return (
+            <div className="container mx-auto p-6">
+                <Alert variant="destructive">
+                    <AlertDescription>Template non trouvé</AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
+
+    return (
+        <div className="h-screen flex flex-col">
+            {/* Header */}
+            <div className="border-b bg-white px-6 py-3">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <Breadcrumbs
+                            items={[
+                                { label: 'Administration', href: '/admin' },
+                                { label: 'Templates', href: '/admin/templates' },
+                                { label: template.nom },
+                            ]}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setZoom((z) => Math.max(0.3, z - 0.1))}>
+                            <ZoomOut className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm w-16 text-center">{Math.round(zoom * 100)}%</span>
+                        <Button variant="outline" size="sm" onClick={() => setZoom((z) => Math.min(2, z + 0.1))}>
+                            <ZoomIn className="h-4 w-4" />
+                        </Button>
+                        <div className="w-px h-6 bg-gray-200 mx-2" />
+                        <Button variant="outline" onClick={() => router.back()}>
+                            Annuler
+                        </Button>
+                        <Button onClick={handleSave} disabled={saving}>
+                            <Save className="h-4 w-4 mr-2" />
+                            {saving ? 'Enregistrement...' : 'Enregistrer'}
+                        </Button>
+                    </div>
+                </div>
+                {error && (
+                    <Alert variant="destructive" className="mt-2">
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
+                {success && (
+                    <Alert className="mt-2 bg-green-50 border-green-200 text-green-800">
+                        <AlertDescription>{success}</AlertDescription>
+                    </Alert>
+                )}
+            </div>
+
+            {/* Main content */}
+            <div className="flex-1 flex overflow-hidden">
+                {/* Palette des champs */}
+                <div className="w-64 border-r bg-gray-50 p-4 overflow-y-auto">
+                    <h3 className="font-semibold mb-3">Champs disponibles</h3>
+                    <p className="text-xs text-gray-500 mb-4">
+                        Cliquez pour ajouter un champ
+                    </p>
+                    <div className="space-y-2">
+                        {availableFields.map((field) => {
+                            const isAdded = config.fields.some((f) => f.id === field.id);
+                            return (
+                                <button
+                                    key={field.id}
+                                    onClick={() => !isAdded && addField(field as TemplateField)}
+                                    disabled={isAdded}
+                                    className={`w-full flex items-center gap-2 p-2 rounded-lg text-left text-sm transition ${isAdded
+                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                            : 'bg-white hover:bg-blue-50 border hover:border-blue-300'
+                                        }`}
+                                >
+                                    {getFieldIcon(field.type)}
+                                    <span className="flex-1 truncate">{field.label}</span>
+                                    {isAdded && <span className="text-xs">✓</span>}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Canvas */}
+                <div
+                    className="flex-1 overflow-auto bg-gray-200 p-8"
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                >
+                    <div
+                        ref={canvasRef}
+                        className="relative bg-white shadow-xl mx-auto"
+                        style={{
+                            width: config.pageWidth * zoom,
+                            height: config.pageHeight * zoom,
+                            backgroundImage: `url(${config.backgroundImage})`,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                        }}
+                    >
+                        {/* Champs placés */}
+                        {config.fields.map((field) => (
+                            <div
+                                key={field.id}
+                                className={`absolute cursor-move group ${selectedField === field.id ? 'ring-2 ring-blue-500' : ''
+                                    }`}
+                                style={{
+                                    left: field.x * zoom,
+                                    top: field.y * zoom,
+                                    fontSize: field.fontSize * zoom,
+                                    fontFamily: field.fontFamily,
+                                    fontWeight: field.fontWeight === 'bold' ? 'bold' : 'normal',
+                                    color: field.color,
+                                    textAlign: field.textAlign as any,
+                                    width: field.width ? field.width * zoom : 'auto',
+                                    height: field.height ? field.height * zoom : 'auto',
+                                }}
+                                onMouseDown={(e) => handleMouseDown(e, field.id)}
+                            >
+                                <div className="bg-yellow-100/80 px-1 py-0.5 rounded">
+                                    {field.type === 'qrcode' ? (
+                                        <div
+                                            className="bg-gray-300 flex items-center justify-center"
+                                            style={{
+                                                width: (field.width || 80) * zoom,
+                                                height: (field.height || 80) * zoom,
+                                            }}
+                                        >
+                                            <QrCode className="text-gray-500" style={{ width: 40 * zoom, height: 40 * zoom }} />
+                                        </div>
+                                    ) : field.type === 'signature' ? (
+                                        <div
+                                            className="bg-gray-200 flex items-center justify-center border-b-2 border-gray-400"
+                                            style={{
+                                                width: (field.width || 150) * zoom,
+                                                height: (field.height || 60) * zoom,
+                                            }}
+                                        >
+                                            <span className="text-gray-400 text-xs">Signature</span>
+                                        </div>
+                                    ) : (
+                                        <span>
+                                            {field.prefix || ''}
+                                            {SAMPLE_DATA[field.id] || `[${field.label}]`}
+                                            {field.suffix || ''}
+                                        </span>
+                                    )}
+                                </div>
+                                {/* Handle de suppression */}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeField(field.id);
+                                    }}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition"
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Panel de propriétés */}
+                <div className="w-72 border-l bg-white p-4 overflow-y-auto">
+                    <h3 className="font-semibold mb-4">Propriétés</h3>
+                    {selectedFieldData ? (
+                        <div className="space-y-4">
+                            <p className="text-sm text-gray-500">{selectedFieldData.label}</p>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <Label className="text-xs">X</Label>
+                                    <Input
+                                        type="number"
+                                        value={selectedFieldData.x}
+                                        onChange={(e) =>
+                                            updateField(selectedFieldData.id, { x: parseInt(e.target.value) || 0 })
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-xs">Y</Label>
+                                    <Input
+                                        type="number"
+                                        value={selectedFieldData.y}
+                                        onChange={(e) =>
+                                            updateField(selectedFieldData.id, { y: parseInt(e.target.value) || 0 })
+                                        }
+                                    />
+                                </div>
+                            </div>
+
+                            {selectedFieldData.type === 'text' || selectedFieldData.type === 'date' ? (
+                                <>
+                                    <div>
+                                        <Label className="text-xs">Taille police</Label>
+                                        <Input
+                                            type="number"
+                                            min={8}
+                                            max={48}
+                                            value={selectedFieldData.fontSize}
+                                            onChange={(e) =>
+                                                updateField(selectedFieldData.id, { fontSize: parseInt(e.target.value) || 12 })
+                                            }
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <Label className="text-xs">Police</Label>
+                                        <Select
+                                            value={selectedFieldData.fontFamily}
+                                            onValueChange={(value) =>
+                                                updateField(selectedFieldData.id, { fontFamily: value })
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Helvetica">Helvetica</SelectItem>
+                                                <SelectItem value="Times">Times</SelectItem>
+                                                <SelectItem value="Courier">Courier</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div>
+                                        <Label className="text-xs">Graisse</Label>
+                                        <Select
+                                            value={selectedFieldData.fontWeight}
+                                            onValueChange={(value) =>
+                                                updateField(selectedFieldData.id, { fontWeight: value })
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="normal">Normal</SelectItem>
+                                                <SelectItem value="bold">Gras</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div>
+                                        <Label className="text-xs">Couleur</Label>
+                                        <Input
+                                            type="color"
+                                            value={selectedFieldData.color}
+                                            onChange={(e) =>
+                                                updateField(selectedFieldData.id, { color: e.target.value })
+                                            }
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <Label className="text-xs">Préfixe</Label>
+                                        <Input
+                                            value={selectedFieldData.prefix || ''}
+                                            onChange={(e) =>
+                                                updateField(selectedFieldData.id, { prefix: e.target.value })
+                                            }
+                                            placeholder="Ex: Né(e) le "
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <Label className="text-xs">Largeur</Label>
+                                        <Input
+                                            type="number"
+                                            value={selectedFieldData.width || 80}
+                                            onChange={(e) =>
+                                                updateField(selectedFieldData.id, { width: parseInt(e.target.value) || 80 })
+                                            }
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label className="text-xs">Hauteur</Label>
+                                        <Input
+                                            type="number"
+                                            value={selectedFieldData.height || 80}
+                                            onChange={(e) =>
+                                                updateField(selectedFieldData.id, { height: parseInt(e.target.value) || 80 })
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => removeField(selectedFieldData.id)}
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Supprimer ce champ
+                            </Button>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-gray-500">
+                            Sélectionnez un champ pour modifier ses propriétés
+                        </p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}

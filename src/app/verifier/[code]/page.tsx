@@ -6,10 +6,14 @@ import { CheckCircle, XCircle, FileText, Calendar, User, GraduationCap, Award } 
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-async function getAttestationInfo(code: string, sig: string, ts: string) {
+async function getAttestationInfo(code: string, sig?: string, ts?: string) {
     try {
         const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-        const response = await fetch(`${baseUrl}/api/verifier/${code}?sig=${sig}&ts=${ts}`, {
+        let url = `${baseUrl}/api/verifier/${code}`;
+        if (sig && ts) {
+            url += `?sig=${sig}&ts=${ts}`;
+        }
+        const response = await fetch(url, {
             cache: 'no-store',
         });
 
@@ -24,35 +28,18 @@ export default async function VerifierCodePage({
     params,
     searchParams,
 }: {
-    params: { code: string };
-    searchParams: { sig?: string; ts?: string };
+    params: Promise<{ code: string }>;
+    searchParams: Promise<{ sig?: string; ts?: string }>;
 }) {
-    const { sig, ts } = searchParams;
+    const resolvedParams = await params;
+    const resolvedSearchParams = await searchParams;
+    const { sig, ts } = resolvedSearchParams;
 
-    if (!sig || !ts) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-                <div className="container mx-auto max-w-2xl">
-                    <Card className="shadow-xl border-red-200">
-                        <CardHeader>
-                            <div className="flex items-center gap-2">
-                                <XCircle className="h-6 w-6 text-red-600" />
-                                <CardTitle className="text-red-600">Paramètres manquants</CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <p>Les paramètres de vérification sont manquants. Veuillez scanner le QR Code ou saisir le numéro complet.</p>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-        );
-    }
-
-    const result = await getAttestationInfo(params.code, sig, ts);
+    // Appeler l'API avec ou sans signature (vérification QR code ou vérification simple)
+    const result = await getAttestationInfo(resolvedParams.code, sig, ts);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+        <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-orange-100 py-12 px-4">
             <div className="container mx-auto max-w-3xl">
                 {/* En-tête */}
                 <div className="text-center mb-8">

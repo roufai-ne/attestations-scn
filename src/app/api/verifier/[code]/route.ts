@@ -14,21 +14,21 @@ export async function GET(
         const signature = searchParams.get('sig');
         const timestamp = searchParams.get('ts');
 
-        if (!signature || !timestamp) {
-            return NextResponse.json(
-                { error: 'Paramètres de vérification manquants' },
-                { status: 400 }
-            );
-        }
-
         const { code } = await params;
 
-        // Valider l'attestation
-        const result = await attestationService.validateAttestation(
-            code,
-            signature,
-            parseInt(timestamp)
-        );
+        // Si signature et timestamp sont fournis, faire une validation sécurisée
+        // Sinon, faire une validation simple par numéro
+        let result;
+        if (signature && timestamp) {
+            result = await attestationService.validateAttestation(
+                code,
+                signature,
+                parseInt(timestamp)
+            );
+        } else {
+            // Validation simple par numéro uniquement
+            result = await attestationService.validateAttestationByNumero(code);
+        }
 
         if (!result.valid) {
             return NextResponse.json(

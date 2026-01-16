@@ -108,7 +108,7 @@ export function Header() {
                                 </DropdownMenuItem>
                             </div>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="justify-center text-blue-600 font-medium cursor-pointer">
+                            <DropdownMenuItem className="justify-center text-green-600 font-medium cursor-pointer">
                                 Voir toutes les notifications
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -122,7 +122,7 @@ export function Header() {
                                 className="flex items-center gap-2 hover:bg-gray-100 h-auto py-2 px-3"
                             >
                                 <Avatar className="h-9 w-9 ring-2 ring-blue-100">
-                                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-semibold text-sm">
+                                    <AvatarFallback className="bg-gradient-to-br from-green-600 to-orange-600 text-white font-semibold text-sm">
                                         {getInitials()}
                                     </AvatarFallback>
                                 </Avatar>
@@ -153,13 +153,13 @@ export function Header() {
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
-                                <Link href={getProfileUrl()} className="cursor-pointer">
+                                <Link href="/profil" className="cursor-pointer">
                                     <User className="mr-2 h-4 w-4" />
                                     Mon profil
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                                <Link href={`${getProfileUrl()}/parametres`} className="cursor-pointer">
+                                <Link href="/parametres" className="cursor-pointer">
                                     <Settings className="mr-2 h-4 w-4" />
                                     Paramètres
                                 </Link>
@@ -179,3 +179,4 @@ export function Header() {
         </header>
     );
 }
+

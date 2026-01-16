@@ -92,6 +92,7 @@ model User {
   signatureConfig     DirecteurSignature?
   auditLogs           AuditLog[]
   historiqueStatuts   HistoriqueStatut[]  @relation("HistoriqueModificateur")
+  passwordResetToken  PasswordResetToken?
 
   @@index([email])
   @@index([role])
@@ -258,8 +259,13 @@ model DirecteurSignature {
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   signatureImage  String   // Chemin vers l'image de signature
-  positionX       Float
-  positionY       Float
+  positionX       Float    // Position X de la signature
+  positionY       Float    // Position Y de la signature
+  signatureWidth  Float    @default(150) // Largeur de la signature
+  signatureHeight Float    @default(60)  // Hauteur de la signature
+  qrCodePositionX Float    @default(50)  // Position X du QR code
+  qrCodePositionY Float    @default(50)  // Position Y du QR code
+  qrCodeSize      Float    @default(80)  // Taille du QR code
   texteSignature  String   // Ex: "Le Directeur\nDr. Moussa IBRAHIM"
   pinHash         String   // PIN hashé avec bcrypt
   pinAttempts     Int      @default(0)
@@ -329,4 +335,18 @@ model AttestationCounter {
   counter Int
 
   @@map("attestation_counter")
+}
+
+// 13. TOKEN DE RÉINITIALISATION MOT DE PASSE
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }

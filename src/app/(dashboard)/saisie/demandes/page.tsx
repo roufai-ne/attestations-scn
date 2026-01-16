@@ -119,7 +119,7 @@ export default function SaisieDemandesPage() {
                     </p>
                 </div>
                 <Link href="/saisie/demandes/nouvelle">
-                    <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Button className="bg-green-600 hover:bg-green-700">
                         <Plus className="h-4 w-4 mr-2" />
                         Nouvelle demande
                     </Button>
@@ -196,7 +196,7 @@ export default function SaisieDemandesPage() {
                             {loading ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center py-8">
-                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-600" />
+                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-green-600" />
                                     </TableCell>
                                 </TableRow>
                             ) : demandes.length === 0 ? (
@@ -255,3 +255,4 @@ export default function SaisieDemandesPage() {
         </div>
     );
 }
+

@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { attestationService } from '@/lib/services/attestation.service';
 import { prisma } from '@/lib/prisma';
 import { TypeNotification } from '@/lib/notifications/templates';
+import { withRateLimit, errorResponse } from '@/lib/api-utils';
 
 /**
  * POST /api/demandes/[id]/generer-attestation
@@ -12,14 +13,11 @@ export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
+    return withRateLimit(request, 'generation', async () => {
         const session = await auth();
 
         if (!session || !['AGENT', 'ADMIN'].includes(session.user.role)) {
-            return NextResponse.json(
-                { error: 'Non autorisé' },
-                { status: 403 }
-            );
+            return errorResponse('Non autorisé', 403);
         }
 
         const { id } = await params;
@@ -34,34 +32,22 @@ export async function POST(
         });
 
         if (!demande) {
-            return NextResponse.json(
-                { error: 'Demande introuvable' },
-                { status: 404 }
-            );
+            return errorResponse('Demande introuvable', 404);
         }
 
         // Vérifier que la demande est validée
         if (demande.statut !== 'VALIDEE') {
-            return NextResponse.json(
-                { error: 'La demande doit être validée avant de générer l\'attestation' },
-                { status: 400 }
-            );
+            return errorResponse('La demande doit être validée avant de générer l\'attestation', 400);
         }
 
         // Vérifier qu'une attestation n'existe pas déjà
         if (demande.attestation) {
-            return NextResponse.json(
-                { error: 'Une attestation existe déjà pour cette demande' },
-                { status: 400 }
-            );
+            return errorResponse('Une attestation existe déjà pour cette demande', 400);
         }
 
         // Vérifier que l'appelé existe
         if (!demande.appele) {
-            return NextResponse.json(
-                { error: 'Informations de l\'appelé manquantes' },
-                { status: 400 }
-            );
+            return errorResponse('Informations de l\'appelé manquantes', 400);
         }
 
         // Générer l'attestation
@@ -132,12 +118,5 @@ export async function POST(
             },
             message: 'Attestation générée avec succès',
         });
-
-    } catch (error) {
-        console.error('Erreur lors de la génération de l\'attestation:', error);
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Erreur serveur' },
-            { status: 500 }
-        );
-    }
+    });
 }

@@ -44,7 +44,7 @@ export default function LoginForm() {
         <div className="w-full max-w-md mx-auto">
             {/* Logo/Header */}
             <div className="text-center mb-8">
-                <div className="inline-flex p-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4 shadow-lg">
+                <div className="inline-flex p-4 bg-gradient-to-br from-green-600 to-orange-600 rounded-2xl mb-4 shadow-lg">
                     <Shield className="h-12 w-12 text-white" />
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -85,7 +85,7 @@ export default function LoginForm() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full rounded-xl border border-gray-300 bg-gray-50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                className="w-full rounded-xl border border-gray-300 bg-gray-50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-green-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20"
                                 placeholder="votre.email@example.com"
                                 disabled={isLoading}
                             />
@@ -107,7 +107,7 @@ export default function LoginForm() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="w-full rounded-xl border border-gray-300 bg-gray-50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                className="w-full rounded-xl border border-gray-300 bg-gray-50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-green-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20"
                                 placeholder="••••••••"
                                 disabled={isLoading}
                             />
@@ -117,7 +117,7 @@ export default function LoginForm() {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 font-semibold text-white shadow-lg shadow-blue-500/30 transition-all hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-lg"
+                        className="w-full rounded-xl bg-gradient-to-r from-green-600 to-orange-600 py-3.5 font-semibold text-white shadow-lg shadow-green-500/30 transition-all hover:shadow-xl hover:shadow-green-500/40 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-lg"
                     >
                         {isLoading ? (
                             <span className="flex items-center justify-center gap-2">
@@ -133,8 +133,8 @@ export default function LoginForm() {
                 <div className="mt-6 text-center">
                     <p className="text-sm text-gray-500">
                         Vous avez oublié votre mot de passe ?{" "}
-                        <a href="#" className="font-medium text-blue-600 hover:text-blue-700 hover:underline">
-                            Contactez l'administrateur
+                        <a href="/forgot-password" className="font-medium text-green-600 hover:text-green-700 hover:underline">
+                            Réinitialiser
                         </a>
                     </p>
                 </div>
@@ -149,3 +149,4 @@ export default function LoginForm() {
         </div>
     )
 }
+

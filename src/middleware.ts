@@ -4,17 +4,19 @@ import type { NextRequest } from "next/server"
 
 export default auth((req) => {
     const { nextUrl } = req
-    
+
     // Skip API routes completely
     if (nextUrl.pathname.startsWith("/api")) {
         return NextResponse.next()
     }
-    
+
     const isLoggedIn = !!req.auth
 
     const isPublicPath =
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/verifier") ||
+        nextUrl.pathname.startsWith("/forgot-password") ||
+        nextUrl.pathname.startsWith("/reset-password") ||
         nextUrl.pathname === "/"
 
     // Permettre les routes publiques

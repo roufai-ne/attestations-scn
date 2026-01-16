@@ -1,8 +1,9 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage } from 'pdf-lib';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { prisma } from '../prisma';
 import { qrcodeService } from './qrcode.service';
+import { templateService, TemplateConfig, TemplateField } from './template.service';
 import { StatutAttestation, TypeSignature } from '@prisma/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -11,6 +12,7 @@ export interface AttestationData {
     demandeId: string;
     nom: string;
     prenom: string;
+    civilite?: string;
     dateNaissance: Date;
     lieuNaissance: string;
     diplome: string;
@@ -18,10 +20,12 @@ export interface AttestationData {
     dateDebutService: Date;
     dateFinService: Date;
     promotion: string;
+    lieuService?: string;
 }
 
 /**
  * Service de génération d'attestations PDF
+ * Utilise le template actif configuré via l'éditeur visuel
  */
 export class AttestationService {
     private readonly uploadDir = path.join(process.cwd(), 'public', 'uploads', 'attestations');
@@ -74,7 +78,119 @@ export class AttestationService {
     }
 
     /**
-     * Génère une attestation PDF
+     * Récupère la valeur d'un champ à partir des données
+     */
+    private getFieldValue(data: AttestationData, field: TemplateField, numero: string): string {
+        const now = new Date();
+
+        switch (field.id) {
+            case 'numero':
+                return numero;
+            case 'civilite':
+                return data.civilite || 'M.';
+            case 'prenomNom':
+                return `${data.prenom} ${data.nom}`;
+            case 'dateNaissance':
+                return format(data.dateNaissance, field.format || 'dd MMMM yyyy', { locale: fr });
+            case 'lieuNaissance':
+                return data.lieuNaissance;
+            case 'diplome':
+                return data.diplome;
+            case 'lieuService':
+                return data.lieuService || 'Direction du Service Civique National';
+            case 'dateDebutService':
+                return format(data.dateDebutService, field.format || 'dd/MM/yyyy');
+            case 'dateFinService':
+                return format(data.dateFinService, field.format || 'dd/MM/yyyy');
+            case 'dateSignature':
+                return format(now, field.format || 'dd MMMM yyyy', { locale: fr });
+            case 'nomDirecteur':
+                return 'Dr. DOUMA SOUMANA M.C';
+            case 'promotion':
+                return data.promotion;
+            case 'numeroArrete':
+                return data.numeroArrete;
+            default:
+                return '';
+        }
+    }
+
+    /**
+     * Convertit une couleur hex en RGB pour pdf-lib
+     */
+    private hexToRgb(hex: string): { r: number; g: number; b: number } {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result
+            ? {
+                r: parseInt(result[1], 16) / 255,
+                g: parseInt(result[2], 16) / 255,
+                b: parseInt(result[3], 16) / 255,
+            }
+            : { r: 0, g: 0, b: 0 };
+    }
+
+    /**
+     * Obtient la police PDF correspondante
+     */
+    private async getFont(
+        pdfDoc: PDFDocument,
+        fontFamily: string,
+        fontWeight: string
+    ): Promise<PDFFont> {
+        const fontMap: Record<string, typeof StandardFonts[keyof typeof StandardFonts]> = {
+            'Helvetica-normal': StandardFonts.Helvetica,
+            'Helvetica-bold': StandardFonts.HelveticaBold,
+            'Times-normal': StandardFonts.TimesRoman,
+            'Times-bold': StandardFonts.TimesRomanBold,
+            'Courier-normal': StandardFonts.Courier,
+            'Courier-bold': StandardFonts.CourierBold,
+        };
+
+        const key = `${fontFamily}-${fontWeight}`;
+        const standardFont = fontMap[key] || StandardFonts.Helvetica;
+        return pdfDoc.embedFont(standardFont);
+    }
+
+    /**
+     * Dessine un champ sur la page PDF
+     */
+    private async drawField(
+        pdfDoc: PDFDocument,
+        page: PDFPage,
+        field: TemplateField,
+        value: string,
+        fonts: Map<string, PDFFont>
+    ): Promise<void> {
+        if (field.type === 'qrcode' || field.type === 'signature') {
+            return; // Géré séparément
+        }
+
+        const fontKey = `${field.fontFamily}-${field.fontWeight}`;
+        let font = fonts.get(fontKey);
+        if (!font) {
+            font = await this.getFont(pdfDoc, field.fontFamily, field.fontWeight);
+            fonts.set(fontKey, font);
+        }
+
+        const color = this.hexToRgb(field.color);
+        const text = `${field.prefix || ''}${value}${field.suffix || ''}`;
+
+        // Note: Dans PDF, Y=0 est en bas, mais notre éditeur utilise Y=0 en haut
+        // Convertir Y: pageHeight - fieldY
+        const pageHeight = page.getHeight();
+        const pdfY = pageHeight - field.y - field.fontSize;
+
+        page.drawText(text, {
+            x: field.x,
+            y: pdfY,
+            size: field.fontSize,
+            font,
+            color: rgb(color.r, color.g, color.b),
+        });
+    }
+
+    /**
+     * Génère une attestation PDF en utilisant le template actif
      */
     async generateAttestation(data: AttestationData): Promise<{
         numero: string;
@@ -88,166 +204,121 @@ export class AttestationService {
             // Générer le numéro d'attestation
             const numero = await this.generateNumero();
 
-            // Charger le template PDF (ou créer un PDF vierge si pas de template)
-            let pdfDoc: PDFDocument;
-            try {
-                const templateBytes = await readFile(this.templatePath);
-                pdfDoc = await PDFDocument.load(templateBytes);
-            } catch (error) {
-                console.warn('Template PDF non trouvé, création d\'un PDF vierge');
-                pdfDoc = await PDFDocument.create();
-                const page = pdfDoc.addPage([595, 842]); // A4
+            // Récupérer le template actif
+            const template = await templateService.getActive();
+            let config: TemplateConfig | null = null;
 
-                // Ajouter un titre simple
-                const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-                page.drawText('ATTESTATION DE SERVICE CIVIQUE NATIONAL', {
-                    x: 50,
-                    y: 750,
-                    size: 16,
-                    font,
-                    color: rgb(0, 0, 0),
-                });
+            if (template) {
+                config = templateService.parseConfig(template);
             }
 
-            // Obtenir la première page
-            const pages = pdfDoc.getPages();
-            const firstPage = pages[0];
+            // Créer le PDF
+            let pdfDoc: PDFDocument;
+            let page: PDFPage;
 
-            // Charger les polices
-            const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-            const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+            if (config && config.backgroundImage) {
+                // Créer un PDF avec l'image de fond
+                pdfDoc = await PDFDocument.create();
 
-            // Remplir les champs (positions à ajuster selon le template réel)
-            const fontSize = 12;
-            let yPosition = 650;
+                // Charger l'image de fond
+                const bgPath = path.join(process.cwd(), 'public', config.backgroundImage);
+                try {
+                    const bgBytes = await readFile(bgPath);
+                    const bgImage = config.backgroundImage.endsWith('.png')
+                        ? await pdfDoc.embedPng(bgBytes)
+                        : await pdfDoc.embedJpg(bgBytes);
 
-            // Numéro d'attestation
-            firstPage.drawText(`N° ${numero}`, {
-                x: 400,
-                y: yPosition,
-                size: 10,
-                font: fontBold,
-            });
+                    // Créer la page avec les bonnes dimensions
+                    const pageWidth = config.pageWidth || 842;
+                    const pageHeight = config.pageHeight || 595;
+                    page = pdfDoc.addPage([pageWidth, pageHeight]);
 
-            yPosition -= 80;
-
-            // Informations de l'appelé
-            firstPage.drawText(`Nom : ${data.nom}`, {
-                x: 50,
-                y: yPosition,
-                size: fontSize,
-                font,
-            });
-
-            yPosition -= 25;
-            firstPage.drawText(`Prénom : ${data.prenom}`, {
-                x: 50,
-                y: yPosition,
-                size: fontSize,
-                font,
-            });
-
-            yPosition -= 25;
-            firstPage.drawText(
-                `Né(e) le : ${format(data.dateNaissance, 'dd MMMM yyyy', { locale: fr })} à ${data.lieuNaissance}`,
-                {
-                    x: 50,
-                    y: yPosition,
-                    size: fontSize,
-                    font,
+                    // Dessiner l'image de fond
+                    page.drawImage(bgImage, {
+                        x: 0,
+                        y: 0,
+                        width: pageWidth,
+                        height: pageHeight,
+                    });
+                } catch (err) {
+                    console.warn('Erreur chargement image de fond:', err);
+                    page = pdfDoc.addPage([config.pageWidth || 842, config.pageHeight || 595]);
                 }
-            );
+            } else {
+                // Fallback: PDF vierge classique
+                pdfDoc = await PDFDocument.create();
+                page = pdfDoc.addPage([842, 595]); // A4 paysage par défaut
+            }
 
-            yPosition -= 25;
-            firstPage.drawText(`Diplôme : ${data.diplome}`, {
-                x: 50,
-                y: yPosition,
-                size: fontSize,
-                font,
-            });
+            // Cache des polices
+            const fonts = new Map<string, PDFFont>();
 
-            yPosition -= 40;
-            firstPage.drawText('A effectué son Service Civique National :', {
-                x: 50,
-                y: yPosition,
-                size: fontSize,
-                font: fontBold,
-            });
+            // Dessiner les champs configurés
+            if (config && config.fields.length > 0) {
+                for (const field of config.fields) {
+                    if (field.type === 'qrcode') {
+                        // Générer et placer le QR Code
+                        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+                        const qrCodeBuffer = await qrcodeService.generateQRCodeBuffer(
+                            {
+                                id: data.demandeId,
+                                numero,
+                                nom: data.nom,
+                                prenom: data.prenom,
+                                dateNaissance: format(data.dateNaissance, 'yyyy-MM-dd'),
+                            },
+                            baseUrl
+                        );
 
-            yPosition -= 25;
-            firstPage.drawText(`Arrêté N° : ${data.numeroArrete}`, {
-                x: 50,
-                y: yPosition,
-                size: fontSize,
-                font,
-            });
+                        const qrImage = await pdfDoc.embedPng(qrCodeBuffer);
+                        const qrWidth = field.width || 80;
+                        const qrHeight = field.height || 80;
+                        const pageHeight = page.getHeight();
 
-            yPosition -= 25;
-            firstPage.drawText(`Promotion : ${data.promotion}`, {
-                x: 50,
-                y: yPosition,
-                size: fontSize,
-                font,
-            });
+                        page.drawImage(qrImage, {
+                            x: field.x,
+                            y: pageHeight - field.y - qrHeight,
+                            width: qrWidth,
+                            height: qrHeight,
+                        });
+                    } else if (field.type === 'signature') {
+                        // Charger la signature du directeur si configurée
+                        const signatureConfig = await prisma.directeurSignature.findFirst({
+                            where: { isEnabled: true },
+                        });
 
-            yPosition -= 25;
-            firstPage.drawText(
-                `Période : du ${format(data.dateDebutService, 'dd/MM/yyyy')} au ${format(data.dateFinService, 'dd/MM/yyyy')}`,
-                {
-                    x: 50,
-                    y: yPosition,
-                    size: fontSize,
-                    font,
+                        if (signatureConfig?.signatureImage) {
+                            try {
+                                const sigPath = path.join(process.cwd(), 'public', signatureConfig.signatureImage);
+                                const sigBytes = await readFile(sigPath);
+                                const sigImage = signatureConfig.signatureImage.endsWith('.png')
+                                    ? await pdfDoc.embedPng(sigBytes)
+                                    : await pdfDoc.embedJpg(sigBytes);
+
+                                const sigWidth = field.width || 150;
+                                const sigHeight = field.height || 60;
+                                const pageHeight = page.getHeight();
+
+                                page.drawImage(sigImage, {
+                                    x: field.x,
+                                    y: pageHeight - field.y - sigHeight,
+                                    width: sigWidth,
+                                    height: sigHeight,
+                                });
+                            } catch (err) {
+                                console.warn('Erreur chargement signature:', err);
+                            }
+                        }
+                    } else {
+                        // Champ texte ou date
+                        const value = this.getFieldValue(data, field, numero);
+                        await this.drawField(pdfDoc, page, field, value, fonts);
+                    }
                 }
-            );
-
-            // Générer le QR Code
-            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-            const qrCodeBuffer = await qrcodeService.generateQRCodeBuffer(
-                {
-                    id: data.demandeId,
-                    numero,
-                    nom: data.nom,
-                    prenom: data.prenom,
-                    dateNaissance: format(data.dateNaissance, 'yyyy-MM-dd'),
-                },
-                baseUrl
-            );
-
-            // Embed QR Code dans le PDF
-            const qrImage = await pdfDoc.embedPng(qrCodeBuffer);
-            const qrDims = qrImage.scale(0.5);
-
-            firstPage.drawImage(qrImage, {
-                x: firstPage.getWidth() - qrDims.width - 50,
-                y: 50,
-                width: qrDims.width,
-                height: qrDims.height,
-            });
-
-            // Texte sous le QR Code
-            firstPage.drawText('Scannez pour vérifier', {
-                x: firstPage.getWidth() - qrDims.width - 50,
-                y: 35,
-                size: 8,
-                font,
-            });
-
-            // Date de délivrance
-            firstPage.drawText(`Fait à Niamey, le ${format(new Date(), 'dd MMMM yyyy', { locale: fr })}`, {
-                x: 50,
-                y: 150,
-                size: fontSize,
-                font,
-            });
-
-            // Signature
-            firstPage.drawText('Le Directeur du Service Civique National', {
-                x: 300,
-                y: 120,
-                size: fontSize,
-                font: fontBold,
-            });
+            } else {
+                // Fallback: génération classique si pas de template configuré
+                await this.generateClassicAttestation(pdfDoc, page, data, numero);
+            }
 
             // Sauvegarder le PDF
             const pdfBytes = await pdfDoc.save();
@@ -269,7 +340,7 @@ export class AttestationService {
 
             return {
                 numero,
-                fichierPath,
+                fichierPath: `/uploads/attestations/${filename}`,
                 qrCodeData,
             };
         } catch (error) {
@@ -279,26 +350,130 @@ export class AttestationService {
     }
 
     /**
+     * Génération classique (fallback si pas de template)
+     */
+    private async generateClassicAttestation(
+        pdfDoc: PDFDocument,
+        page: PDFPage,
+        data: AttestationData,
+        numero: string
+    ): Promise<void> {
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const fontSize = 12;
+        let yPosition = page.getHeight() - 100;
+
+        // Titre
+        page.drawText('ATTESTATION DE SERVICE CIVIQUE NATIONAL', {
+            x: 200,
+            y: yPosition,
+            size: 16,
+            font: fontBold,
+        });
+
+        yPosition -= 50;
+
+        // Numéro
+        page.drawText(`N° ${numero}`, {
+            x: 600,
+            y: yPosition,
+            size: 10,
+            font: fontBold,
+        });
+
+        yPosition -= 40;
+
+        // Informations
+        const lines = [
+            `${data.civilite || 'M./Mme/Mlle'} ${data.prenom} ${data.nom}`,
+            `Né(e) le ${format(data.dateNaissance, 'dd MMMM yyyy', { locale: fr })} à ${data.lieuNaissance}`,
+            `Titulaire d'${data.diplome}`,
+            '',
+            `A accompli avec assiduité le Service Civique National`,
+            `à/au ${data.lieuService || 'Direction du Service Civique National'}`,
+            '',
+            `Durant la période du ${format(data.dateDebutService, 'dd/MM/yyyy')} au ${format(data.dateFinService, 'dd/MM/yyyy')}`,
+        ];
+
+        for (const line of lines) {
+            page.drawText(line, {
+                x: 50,
+                y: yPosition,
+                size: fontSize,
+                font: line === '' ? font : line.includes('accompli') ? fontBold : font,
+            });
+            yPosition -= 25;
+        }
+
+        // Date et signature
+        page.drawText(`Niamey, le ${format(new Date(), 'dd MMMM yyyy', { locale: fr })}`, {
+            x: 500,
+            y: 150,
+            size: fontSize,
+            font,
+        });
+
+        page.drawText('Le Directeur', {
+            x: 550,
+            y: 120,
+            size: fontSize,
+            font: fontBold,
+        });
+
+        // QR Code
+        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+        const qrCodeBuffer = await qrcodeService.generateQRCodeBuffer(
+            {
+                id: data.demandeId,
+                numero,
+                nom: data.nom,
+                prenom: data.prenom,
+                dateNaissance: format(data.dateNaissance, 'yyyy-MM-dd'),
+            },
+            baseUrl
+        );
+
+        const qrImage = await pdfDoc.embedPng(qrCodeBuffer);
+        page.drawImage(qrImage, {
+            x: 50,
+            y: 50,
+            width: 80,
+            height: 80,
+        });
+
+        page.drawText('Scannez pour vérifier', {
+            x: 50,
+            y: 35,
+            size: 8,
+            font,
+        });
+    }
+
+    /**
      * Crée l'enregistrement d'attestation en base de données
      */
     async createAttestation(demandeId: string, data: AttestationData) {
+        // Générer l'attestation PDF
         const { numero, fichierPath, qrCodeData } = await this.generateAttestation(data);
 
+        // Récupérer le directeur signataire (si configuré)
+        const directeur = await prisma.user.findFirst({
+            where: { role: 'DIRECTEUR', actif: true },
+        });
+
+        // Créer l'enregistrement
         const attestation = await prisma.attestation.create({
             data: {
                 numero,
+                demandeId,
                 fichierPath,
                 qrCodeData,
-                demandeId,
                 statut: StatutAttestation.GENEREE,
+                typeSignature: TypeSignature.ELECTRONIQUE,
+                signataire: directeur ? { connect: { id: directeur.id } } : undefined,
             },
-        });
-
-        // Mettre à jour le statut de la demande
-        await prisma.demande.update({
-            where: { id: demandeId },
-            data: {
-                statut: 'EN_ATTENTE_SIGNATURE',
+            include: {
+                demande: true,
             },
         });
 
@@ -317,6 +492,13 @@ export class AttestationService {
                         appele: true,
                     },
                 },
+                signataire: {
+                    select: {
+                        id: true,
+                        nom: true,
+                        prenom: true,
+                    },
+                },
             },
         });
     }
@@ -325,33 +507,104 @@ export class AttestationService {
      * Valide une attestation via son QR Code
      */
     async validateAttestation(numero: string, signature: string, timestamp: number) {
+        // Vérifier que l'attestation existe
         const attestation = await this.getAttestationByNumero(numero);
 
         if (!attestation) {
-            return { valid: false, reason: 'Attestation introuvable' };
+            return {
+                valid: false,
+                reason: 'Attestation non trouvée',
+            };
         }
 
-        // Parser et valider les données QR
-        const validation = qrcodeService.parseAndValidateQRData(attestation.qrCodeData);
-
-        if (!validation.valid) {
-            return { valid: false, reason: validation.reason };
+        // Vérifier que l'attestation est signée
+        if (attestation.statut !== StatutAttestation.SIGNEE) {
+            return {
+                valid: false,
+                reason: 'Attestation non signée',
+                attestation: {
+                    numero: attestation.numero,
+                    nom: attestation.demande.appele?.nom || '',
+                    prenom: attestation.demande.appele?.prenom || '',
+                    dateNaissance: attestation.demande.appele?.dateNaissance || new Date(),
+                    diplome: attestation.demande.appele?.diplome || '',
+                    promotion: attestation.demande.appele?.promotion || '',
+                    dateGeneration: attestation.dateGeneration,
+                    statut: attestation.statut,
+                },
+            };
         }
 
-        // Vérifier que la signature correspond
-        if (validation.data?.signature !== signature) {
-            return { valid: false, reason: 'Signature invalide' };
+        // Vérifier la signature du QR Code
+        const isValidSignature = qrcodeService.verifySignature(
+            attestation.qrCodeData,
+            signature,
+            timestamp
+        );
+
+        if (!isValidSignature) {
+            return {
+                valid: false,
+                reason: 'Signature QR Code invalide',
+            };
         }
 
         return {
             valid: true,
             attestation: {
                 numero: attestation.numero,
-                nom: attestation.demande.appele?.nom,
-                prenom: attestation.demande.appele?.prenom,
-                dateNaissance: attestation.demande.appele?.dateNaissance,
-                diplome: attestation.demande.appele?.diplome,
-                promotion: attestation.demande.appele?.promotion,
+                nom: attestation.demande.appele?.nom || '',
+                prenom: attestation.demande.appele?.prenom || '',
+                dateNaissance: attestation.demande.appele?.dateNaissance || new Date(),
+                diplome: attestation.demande.appele?.diplome || '',
+                promotion: attestation.demande.appele?.promotion || '',
+                dateGeneration: attestation.dateGeneration,
+                statut: attestation.statut,
+            },
+        };
+    }
+
+    /**
+     * Valide une attestation par son numéro uniquement (sans signature QR)
+     */
+    async validateAttestationByNumero(numero: string) {
+        // Vérifier que l'attestation existe
+        const attestation = await this.getAttestationByNumero(numero);
+
+        if (!attestation) {
+            return {
+                valid: false,
+                reason: 'Attestation non trouvée',
+            };
+        }
+
+        // Vérifier que l'attestation est signée
+        if (attestation.statut !== StatutAttestation.SIGNEE) {
+            return {
+                valid: false,
+                reason: 'Attestation non signée ou invalidée',
+                attestation: {
+                    numero: attestation.numero,
+                    nom: attestation.demande.appele?.nom || '',
+                    prenom: attestation.demande.appele?.prenom || '',
+                    dateNaissance: attestation.demande.appele?.dateNaissance || new Date(),
+                    diplome: attestation.demande.appele?.diplome || '',
+                    promotion: attestation.demande.appele?.promotion || '',
+                    dateGeneration: attestation.dateGeneration,
+                    statut: attestation.statut,
+                },
+            };
+        }
+
+        return {
+            valid: true,
+            attestation: {
+                numero: attestation.numero,
+                nom: attestation.demande.appele?.nom || '',
+                prenom: attestation.demande.appele?.prenom || '',
+                dateNaissance: attestation.demande.appele?.dateNaissance || new Date(),
+                diplome: attestation.demande.appele?.diplome || '',
+                promotion: attestation.demande.appele?.promotion || '',
                 dateGeneration: attestation.dateGeneration,
                 statut: attestation.statut,
             },

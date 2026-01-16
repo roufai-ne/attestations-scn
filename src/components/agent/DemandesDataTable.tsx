@@ -163,7 +163,7 @@ export default function DemandesDataTable() {
                     <div className="flex items-center gap-2">
                         <h3 className="font-semibold">Filtres de recherche</h3>
                         {activeFiltersCount > 0 && (
-                            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-600 text-white text-xs">
+                            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-green-600 text-white text-xs">
                                 {activeFiltersCount}
                             </span>
                         )}
@@ -180,7 +180,7 @@ export default function DemandesDataTable() {
                         </Button>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
-                            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                            className="text-sm text-green-600 hover:underline flex items-center gap-1"
                         >
                             {showFilters ? (
                                 <>
@@ -216,7 +216,7 @@ export default function DemandesDataTable() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Nom, prénom, numéro..."
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                     </div>
 
@@ -227,7 +227,7 @@ export default function DemandesDataTable() {
                         <select
                             value={statutFilter}
                             onChange={(e) => setStatutFilter(e.target.value)}
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                         >
                             <option value="">Tous les statuts</option>
                             {Object.entries(statutLabels).map(([key, label]) => (
@@ -245,7 +245,7 @@ export default function DemandesDataTable() {
                             value={promotionFilter}
                             onChange={(e) => setPromotionFilter(e.target.value)}
                             placeholder="Ex: 2023-2024"
-                            className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                     </div>
                 </div>
@@ -260,7 +260,7 @@ export default function DemandesDataTable() {
                                     type="date"
                                     value={dateDebutFilter}
                                     onChange={(e) => setDateDebutFilter(e.target.value)}
-                                    className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 />
                             </div>
                             <div>
@@ -269,7 +269,7 @@ export default function DemandesDataTable() {
                                     type="date"
                                     value={dateFinFilter}
                                     onChange={(e) => setDateFinFilter(e.target.value)}
-                                    className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 />
                             </div>
                         </div>
@@ -281,7 +281,7 @@ export default function DemandesDataTable() {
                                     value={structureFilter}
                                     onChange={(e) => setStructureFilter(e.target.value)}
                                     placeholder="Ex: Ministère de l'Éducation"
-                                    className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 />
                             </div>
                             <div>
@@ -289,7 +289,7 @@ export default function DemandesDataTable() {
                                 <select
                                     value={diplomeFilter}
                                     onChange={(e) => setDiplomeFilter(e.target.value)}
-                                    className="w-full rounded-md border px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className="w-full rounded-md border px-3 py-2 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                                 >
                                     <option value="">Tous les diplômes</option>
                                     <option value="BAC">BAC</option>
@@ -312,7 +312,7 @@ export default function DemandesDataTable() {
                         {search && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">
                                 Recherche: {search}
-                                <button onClick={() => setSearch("")} className="hover:text-blue-600">
+                                <button onClick={() => setSearch("")} className="hover:text-green-600">
                                     <X className="h-3 w-3" />
                                 </button>
                             </span>
@@ -320,7 +320,7 @@ export default function DemandesDataTable() {
                         {statutFilter && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">
                                 Statut: {statutLabels[statutFilter]}
-                                <button onClick={() => setStatutFilter("")} className="hover:text-blue-600">
+                                <button onClick={() => setStatutFilter("")} className="hover:text-green-600">
                                     <X className="h-3 w-3" />
                                 </button>
                             </span>
@@ -328,7 +328,7 @@ export default function DemandesDataTable() {
                         {promotionFilter && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">
                                 Promotion: {promotionFilter}
-                                <button onClick={() => setPromotionFilter("")} className="hover:text-blue-600">
+                                <button onClick={() => setPromotionFilter("")} className="hover:text-green-600">
                                     <X className="h-3 w-3" />
                                 </button>
                             </span>
@@ -336,7 +336,7 @@ export default function DemandesDataTable() {
                         {structureFilter && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">
                                 Structure: {structureFilter}
-                                <button onClick={() => setStructureFilter("")} className="hover:text-blue-600">
+                                <button onClick={() => setStructureFilter("")} className="hover:text-green-600">
                                     <X className="h-3 w-3" />
                                 </button>
                             </span>
@@ -344,7 +344,7 @@ export default function DemandesDataTable() {
                         {diplomeFilter && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">
                                 Diplôme: {diplomeFilter}
-                                <button onClick={() => setDiplomeFilter("")} className="hover:text-blue-600">
+                                <button onClick={() => setDiplomeFilter("")} className="hover:text-green-600">
                                     <X className="h-3 w-3" />
                                 </button>
                             </span>
@@ -352,7 +352,7 @@ export default function DemandesDataTable() {
                         {(dateDebutFilter || dateFinFilter) && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">
                                 Période: {dateDebutFilter || "..."} - {dateFinFilter || "..."}
-                                <button onClick={() => { setDateDebutFilter(""); setDateFinFilter(""); }} className="hover:text-blue-600">
+                                <button onClick={() => { setDateDebutFilter(""); setDateFinFilter(""); }} className="hover:text-green-600">
                                     <X className="h-3 w-3" />
                                 </button>
                             </span>
@@ -481,3 +481,4 @@ export default function DemandesDataTable() {
         </div>
     )
 }
+

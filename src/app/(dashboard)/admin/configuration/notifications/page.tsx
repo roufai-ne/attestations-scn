@@ -414,7 +414,7 @@ export default function NotificationsConfigPage() {
             />
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
+          <div className="bg-blue-50 border border-green-200 rounded p-3 text-sm">
             <p className="font-semibold text-blue-900 mb-1">⚠️ Attention</p>
             <p className="text-blue-700">
               Les templates de messages doivent être créés et approuvés dans le Meta Business Manager
@@ -451,3 +451,4 @@ export default function NotificationsConfigPage() {
     </div>
   );
 }
+

@@ -25,7 +25,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
             title: "En cours",
             value: stats.enCours,
             icon: Clock,
-            color: "text-blue-600",
+            color: "text-green-600",
             bgColor: "bg-blue-50",
             description: "Mes demandes en cours",
         },
@@ -76,3 +76,4 @@ export default function StatsCards({ stats }: StatsCardsProps) {
         </div>
     )
 }
+

@@ -224,7 +224,7 @@ export function ArreteUploadDialog({ open, onOpenChange }: ArreteUploadDialogPro
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* Progression de l'upload */}
                         {loading && uploadProgress > 0 && uploadProgress < 100 && (
-                            <div className="space-y-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="space-y-2 p-4 bg-blue-50 rounded-lg border border-green-200">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-medium text-blue-900">
                                         Upload du fichier...
@@ -357,3 +357,4 @@ export function ArreteUploadDialog({ open, onOpenChange }: ArreteUploadDialogPro
         </Dialog>
     );
 }
+

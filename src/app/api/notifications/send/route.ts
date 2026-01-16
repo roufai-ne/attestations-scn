@@ -9,6 +9,7 @@ import { enqueueNotification } from '@/lib/notifications';
 import { TypeNotification } from '@/lib/notifications/templates';
 import { CanalNotification } from '@prisma/client';
 import { z } from 'zod';
+import { withRateLimit, errorResponse } from '@/lib/api-utils';
 
 // Schéma de validation
 const sendNotificationSchema = z.object({
@@ -29,22 +30,16 @@ const sendNotificationSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  try {
+  return withRateLimit(request, 'notification', async () => {
     // Vérifier l'authentification
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Non authentifié' },
-        { status: 401 }
-      );
+      return errorResponse('Non authentifié', 401);
     }
 
     // Vérifier les permissions (Agent ou Admin)
     if (session.user.role !== 'AGENT' && session.user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Non autorisé' },
-        { status: 403 }
-      );
+      return errorResponse('Non autorisé', 403);
     }
 
     // Récupérer et valider les données
@@ -52,10 +47,7 @@ export async function POST(request: NextRequest) {
     const validation = sendNotificationSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Données invalides', details: validation.error.issues },
-        { status: 400 }
-      );
+      return errorResponse('Données invalides', 400, validation.error.issues);
     }
 
     const { demandeId, type, canaux, data, messagePersonnalise, immediate } = validation.data;
@@ -80,11 +72,5 @@ export async function POST(request: NextRequest) {
       jobId: job.id,
       canaux: canaux,
     });
-  } catch (error) {
-    console.error('Erreur API send notification:', error);
-    return NextResponse.json(
-      { error: 'Erreur serveur' },
-      { status: 500 }
-    );
-  }
+  });
 }
