@@ -3,10 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Lock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 
@@ -87,143 +84,157 @@ function ResetPasswordForm() {
 
     if (verifying) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-                <Card className="w-full max-w-md">
-                    <CardContent className="py-8 text-center">
-                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-green-600" />
-                        <p className="mt-4 text-gray-600">Vérification du lien...</p>
-                    </CardContent>
-                </Card>
-            </div>
+            <AuthLayout showBackToHome={false}>
+                <div className="text-center py-8">
+                    <Loader2 className="h-10 w-10 animate-spin mx-auto text-[var(--accent-orange)]" />
+                    <p className="mt-4 text-[var(--text-muted)]">Vérification du lien...</p>
+                </div>
+            </AuthLayout>
         );
     }
 
     if (!token || !tokenValid) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-                <Card className="w-full max-w-md">
-                    <CardContent className="py-8 text-center">
-                        <div className="inline-flex p-4 bg-red-100 rounded-full mb-4">
-                            <XCircle className="h-8 w-8 text-red-600" />
-                        </div>
-                        <h2 className="text-xl font-bold mb-2">Lien invalide ou expiré</h2>
-                        <p className="text-gray-600 mb-6">
-                            Ce lien de réinitialisation n'est plus valide.
-                            Les liens expirent après 1 heure.
-                        </p>
-                        <Link href="/forgot-password">
-                            <Button>Demander un nouveau lien</Button>
-                        </Link>
-                    </CardContent>
-                </Card>
-            </div>
+            <AuthLayout showBackToHome={false}>
+                <div className="text-center py-4">
+                    <div className="inline-flex p-4 bg-red-100 rounded-full mb-4">
+                        <XCircle className="h-10 w-10 text-red-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-[var(--navy)] mb-3">
+                        Lien invalide ou expiré
+                    </h2>
+                    <p className="text-[var(--text-muted)] mb-6">
+                        Ce lien de réinitialisation n&apos;est plus valide.
+                        Les liens expirent après 1 heure.
+                    </p>
+                    <Link
+                        href="/forgot-password"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--accent-orange)] hover:bg-[var(--accent-orange-dark)] text-white font-medium rounded-xl transition-colors"
+                    >
+                        Demander un nouveau lien
+                    </Link>
+                </div>
+            </AuthLayout>
         );
     }
 
     if (success) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-                <Card className="w-full max-w-md">
-                    <CardContent className="py-8 text-center">
-                        <div className="inline-flex p-4 bg-green-100 rounded-full mb-4">
-                            <CheckCircle className="h-8 w-8 text-green-600" />
-                        </div>
-                        <h2 className="text-xl font-bold mb-2">Mot de passe modifié !</h2>
-                        <p className="text-gray-600 mb-2">
-                            Votre mot de passe a été réinitialisé avec succès.
-                        </p>
-                        <p className="text-sm text-gray-500">
-                            Redirection vers la page de connexion...
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
+            <AuthLayout showBackToHome={false}>
+                <div className="text-center py-4">
+                    <div className="inline-flex p-4 bg-[var(--accent-green)]/10 rounded-full mb-4">
+                        <CheckCircle className="h-10 w-10 text-[var(--accent-green)]" />
+                    </div>
+                    <h2 className="text-xl font-bold text-[var(--navy)] mb-3">
+                        Mot de passe modifié !
+                    </h2>
+                    <p className="text-[var(--text-muted)] mb-2">
+                        Votre mot de passe a été réinitialisé avec succès.
+                    </p>
+                    <p className="text-sm text-[var(--text-muted)]">
+                        Redirection vers la page de connexion...
+                    </p>
+                </div>
+            </AuthLayout>
         );
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-            <Card className="w-full max-w-md">
-                <CardHeader className="text-center">
-                    <div className="inline-flex p-3 bg-blue-100 rounded-full mx-auto mb-2">
-                        <Lock className="h-6 w-6 text-green-600" />
+        <AuthLayout
+            title="Nouveau mot de passe"
+            subtitle="Choisissez un nouveau mot de passe sécurisé"
+        >
+            <form onSubmit={handleSubmit} className="space-y-5">
+                {error && (
+                    <Alert variant="destructive" className="rounded-xl">
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
+
+                <div className="space-y-2">
+                    <label
+                        htmlFor="password"
+                        className="block text-sm font-semibold text-[var(--text-dark)]"
+                    >
+                        Nouveau mot de passe
+                    </label>
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--text-muted)]" />
+                        <input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            disabled={loading}
+                            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-[var(--text-dark)] placeholder-[var(--text-muted)] transition-all focus:border-[var(--accent-orange)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-orange)]/20"
+                        />
                     </div>
-                    <CardTitle className="text-xl">Nouveau mot de passe</CardTitle>
-                    <CardDescription>
-                        Choisissez un nouveau mot de passe sécurisé
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {error && (
-                            <Alert variant="destructive">
-                                <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                        )}
+                    <p className="text-xs text-[var(--text-muted)]">
+                        Minimum 8 caractères
+                    </p>
+                </div>
 
-                        <div>
-                            <Label htmlFor="password">Nouveau mot de passe</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                disabled={loading}
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                                Minimum 8 caractères
-                            </p>
-                        </div>
+                <div className="space-y-2">
+                    <label
+                        htmlFor="confirmPassword"
+                        className="block text-sm font-semibold text-[var(--text-dark)]"
+                    >
+                        Confirmer le mot de passe
+                    </label>
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--text-muted)]" />
+                        <input
+                            id="confirmPassword"
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="••••••••"
+                            disabled={loading}
+                            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-[var(--text-dark)] placeholder-[var(--text-muted)] transition-all focus:border-[var(--accent-orange)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-orange)]/20"
+                        />
+                    </div>
+                </div>
 
-                        <div>
-                            <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-                            <Input
-                                id="confirmPassword"
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="••••••••"
-                                disabled={loading}
-                            />
-                        </div>
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full rounded-xl bg-[var(--accent-orange)] hover:bg-[var(--accent-orange-dark)] py-3.5 font-semibold text-white shadow-lg transition-all hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-orange)] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {loading ? (
+                        <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Modification...
+                        </span>
+                    ) : (
+                        'Réinitialiser le mot de passe'
+                    )}
+                </button>
 
-                        <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Modification...
-                                </>
-                            ) : (
-                                'Réinitialiser le mot de passe'
-                            )}
-                        </Button>
-
-                        <div className="text-center">
-                            <Link
-                                href="/login"
-                                className="text-sm text-green-600 hover:underline"
-                            >
-                                <ArrowLeft className="inline h-3 w-3 mr-1" />
-                                Retour à la connexion
-                            </Link>
-                        </div>
-                    </form>
-                </CardContent>
-            </Card>
-        </div>
+                <div className="text-center">
+                    <Link
+                        href="/login"
+                        className="text-sm text-[var(--accent-orange)] hover:text-[var(--accent-orange-dark)] hover:underline font-medium inline-flex items-center gap-1"
+                    >
+                        <ArrowLeft className="h-3 w-3" />
+                        Retour à la connexion
+                    </Link>
+                </div>
+            </form>
+        </AuthLayout>
     );
 }
 
 export default function ResetPasswordPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-            </div>
+            <AuthLayout showBackToHome={false}>
+                <div className="text-center py-8">
+                    <Loader2 className="h-10 w-10 animate-spin mx-auto text-[var(--accent-orange)]" />
+                </div>
+            </AuthLayout>
         }>
             <ResetPasswordForm />
         </Suspense>
     );
 }
-

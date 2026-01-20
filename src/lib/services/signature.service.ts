@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { PDFDocument } from 'pdf-lib';
 import { readFile, writeFile } from 'fs/promises';
 import { prisma } from '../prisma';
@@ -28,55 +28,59 @@ export class SignatureService {
 
     /**
      * Crée ou met à jour la configuration de signature
+     * Note: Les positions sont maintenant gérées dans le template actif (par l'admin)
      */
     async createOrUpdateConfig(userId: string, data: {
-        signatureImagePath: string;
+        signatureImagePath?: string;
         texteSignature: string;
         pin: string;
-        positionX?: number;
-        positionY?: number;
-        signatureWidth?: number;
-        signatureHeight?: number;
-        qrCodePositionX?: number;
-        qrCodePositionY?: number;
-        qrCodeSize?: number;
     }) {
         const pinHash = await this.hashPin(data.pin);
 
-        const config = await prisma.directeurSignature.upsert({
+        // Vérifier si une config existe déjà
+        const existing = await prisma.directeurSignature.findUnique({
             where: { userId },
-            create: {
-                userId,
-                signatureImage: data.signatureImagePath,
-                texteSignature: data.texteSignature,
-                pinHash,
-                positionX: data.positionX || 500,
-                positionY: data.positionY || 100,
-                signatureWidth: data.signatureWidth || 150,
-                signatureHeight: data.signatureHeight || 60,
-                qrCodePositionX: data.qrCodePositionX || 50,
-                qrCodePositionY: data.qrCodePositionY || 500,
-                qrCodeSize: data.qrCodeSize || 80,
-                isEnabled: true,
-            },
-            update: {
-                signatureImage: data.signatureImagePath,
-                texteSignature: data.texteSignature,
-                pinHash,
-                positionX: data.positionX || 500,
-                positionY: data.positionY || 100,
-                signatureWidth: data.signatureWidth || 150,
-                signatureHeight: data.signatureHeight || 60,
-                qrCodePositionX: data.qrCodePositionX || 50,
-                qrCodePositionY: data.qrCodePositionY || 500,
-                qrCodeSize: data.qrCodeSize || 80,
-                isEnabled: true,
-                pinAttempts: 0, // Réinitialiser les tentatives
-                pinBloqueJusqua: null,
-            },
         });
 
-        return config;
+        if (existing) {
+            // Mise à jour - ne mettre à jour l'image que si fournie
+            const config = await prisma.directeurSignature.update({
+                where: { userId },
+                data: {
+                    ...(data.signatureImagePath && { signatureImage: data.signatureImagePath }),
+                    texteSignature: data.texteSignature,
+                    pinHash,
+                    isEnabled: true,
+                    pinAttempts: 0,
+                    pinBloqueJusqua: null,
+                },
+            });
+            return config;
+        } else {
+            // Création - image obligatoire pour la première fois
+            if (!data.signatureImagePath) {
+                throw new Error('L\'image de signature est requise pour la première configuration');
+            }
+
+            const config = await prisma.directeurSignature.create({
+                data: {
+                    userId,
+                    signatureImage: data.signatureImagePath,
+                    texteSignature: data.texteSignature,
+                    pinHash,
+                    // Positions par défaut (utilisées en fallback uniquement)
+                    positionX: 550,
+                    positionY: 450,
+                    signatureWidth: 150,
+                    signatureHeight: 60,
+                    qrCodePositionX: 50,
+                    qrCodePositionY: 450,
+                    qrCodeSize: 80,
+                    isEnabled: true,
+                },
+            });
+            return config;
+        }
     }
 
     /**
@@ -180,7 +184,8 @@ export class SignatureService {
 
     /**
      * Applique la signature et le QR code sur un PDF d'attestation
-     * Utilise les positions configurées par le directeur
+     * Utilise les positions configurées dans le template actif (par l'admin)
+     * et l'image de signature du directeur
      */
     async applySignatureToPDF(
         attestationId: string,
@@ -210,6 +215,24 @@ export class SignatureService {
 
         const appele = attestation.demande?.appele;
 
+        // Récupérer le template actif pour les positions des champs signature et QR
+        const { templateService } = await import('./template.service');
+        const activeTemplate = await templateService.getActive();
+        const templateConfig = activeTemplate ? templateService.parseConfig(activeTemplate) : null;
+
+        // Trouver les champs de type 'signature' et 'qrcode' dans la configuration du template
+        const signatureField = templateConfig?.fields.find(f => f.type === 'signature');
+        const qrcodeField = templateConfig?.fields.find(f => f.type === 'qrcode');
+
+        // Positions à utiliser (depuis les champs ou fallback aux propriétés de layout ou valeurs par défaut)
+        const signaturePosition = signatureField
+            ? { x: signatureField.x, y: signatureField.y, width: signatureField.width || 150, height: signatureField.height || 60 }
+            : (templateConfig?.signaturePosition || { x: 550, y: 450, width: 150, height: 60 });
+
+        const qrCodePosition = qrcodeField
+            ? { x: qrcodeField.x, y: qrcodeField.y, size: qrcodeField.width || 80 }
+            : (templateConfig?.qrCodePosition || { x: 50, y: 450, size: 80 });
+
         // Construire le chemin du fichier
         const pdfPath = attestation.fichierPath.startsWith('/')
             ? path.join(process.cwd(), 'public', attestation.fichierPath)
@@ -224,7 +247,7 @@ export class SignatureService {
         const firstPage = pages[0];
         const pageHeight = firstPage.getHeight();
 
-        // 1. Appliquer la SIGNATURE à la position configurée
+        // 1. Appliquer la SIGNATURE à la position du template
         const signaturePath = config.signatureImage.startsWith('/')
             ? path.join(process.cwd(), 'public', config.signatureImage)
             : config.signatureImage;
@@ -234,19 +257,15 @@ export class SignatureService {
             ? await pdfDoc.embedPng(signatureImageBytes)
             : await pdfDoc.embedJpg(signatureImageBytes);
 
-        // Dimensions de la signature (utiliser les valeurs configurées ou défaut)
-        const sigWidth = (config as any).signatureWidth || 150;
-        const sigHeight = (config as any).signatureHeight || 60;
-
-        // Note: Les coordonnées Y sont inversées en PDF (origine en bas)
+        // Utiliser les dimensions du template
         firstPage.drawImage(signatureImage, {
-            x: config.positionX,
-            y: pageHeight - config.positionY - sigHeight,
-            width: sigWidth,
-            height: sigHeight,
+            x: signaturePosition.x,
+            y: pageHeight - signaturePosition.y - signaturePosition.height,
+            width: signaturePosition.width,
+            height: signaturePosition.height,
         });
 
-        // 2. Appliquer le QR CODE à la position configurée
+        // 2. Appliquer le QR CODE à la position du template
         const { qrcodeService } = await import('./qrcode.service');
         const { format } = await import('date-fns');
 
@@ -265,13 +284,12 @@ export class SignatureService {
         );
 
         const qrImage = await pdfDoc.embedPng(qrCodeBuffer);
-        const qrSize = (config as any).qrCodeSize || 80;
 
         firstPage.drawImage(qrImage, {
-            x: (config as any).qrCodePositionX || 50,
-            y: pageHeight - ((config as any).qrCodePositionY || 50) - qrSize,
-            width: qrSize,
-            height: qrSize,
+            x: qrCodePosition.x,
+            y: pageHeight - qrCodePosition.y - qrCodePosition.size,
+            width: qrCodePosition.size,
+            height: qrCodePosition.size,
         });
 
         // Sauvegarder le PDF modifié

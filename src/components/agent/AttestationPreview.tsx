@@ -56,11 +56,8 @@ export function AttestationPreview({
                     </DialogTitle>
                 </DialogHeader>
                 <PDFViewer
-                    fileUrl={pdfUrl}
-                    fileName={`${numero}.pdf`}
-                    height="600px"
-                    showDownload={true}
-                    showFullScreen={false}
+                    url={pdfUrl}
+                    title={`${numero}.pdf`}
                 />
             </DialogContent>
         </Dialog>

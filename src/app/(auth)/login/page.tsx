@@ -1,4 +1,5 @@
 import LoginForm from "@/components/auth/LoginForm"
+import { AuthLayout } from "@/components/auth/AuthLayout"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 
@@ -22,18 +23,11 @@ export default async function LoginPage() {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-green-50 via-white to-orange-100 px-4">
-            <div className="w-full max-w-md">
-                <div className="mb-8 text-center">
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        Service Civique National
-                    </h1>
-                    <p className="mt-2 text-gray-600">
-                        Gestion des Attestations
-                    </p>
-                </div>
-                <LoginForm />
-            </div>
-        </div>
+        <AuthLayout
+            title="Bienvenue"
+            subtitle="Connectez-vous à votre espace sécurisé"
+        >
+            <LoginForm />
+        </AuthLayout>
     )
 }

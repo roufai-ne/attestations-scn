@@ -23,7 +23,15 @@ import {
   Edit,
   Download,
   AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ValidationDialog } from '@/components/agent/ValidationDialog';
 import { RejectionDialog } from '@/components/agent/RejectionDialog';
 import { EditDemandeDialog } from '@/components/agent/EditDemandeDialog';
@@ -58,6 +66,27 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
       toast.error('Erreur lors du chargement');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChangeStatut = async (nouveauStatut: string) => {
+    try {
+      const response = await fetch(`/api/demandes/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statut: nouveauStatut }),
+      });
+
+      if (response.ok) {
+        toast.success(`Statut modifié avec succès`);
+        fetchDemande();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Erreur lors de la modification');
+      }
+    } catch (error) {
+      console.error('Erreur changement statut:', error);
+      toast.error('Erreur lors de la modification du statut');
     }
   };
 
@@ -107,10 +136,10 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const canValidate = () => {
-    return demande && 
-           ['ENREGISTREE', 'EN_TRAITEMENT', 'PIECES_NON_CONFORMES'].includes(demande.statut) &&
-           allPiecesVerified() &&
-           allPiecesConformes();
+    return demande &&
+      ['ENREGISTREE', 'EN_TRAITEMENT', 'PIECES_NON_CONFORMES'].includes(demande.statut) &&
+      allPiecesVerified() &&
+      allPiecesConformes();
   };
 
   const canReject = () => {
@@ -118,11 +147,11 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const canMarkPiecesNonConformes = () => {
-    return demande && 
-           ['EN_TRAITEMENT', 'ENREGISTREE'].includes(demande.statut) && 
-           demande.pieces?.length > 0 &&
-           allPiecesVerified() &&
-           !allPiecesConformes();
+    return demande &&
+      ['EN_TRAITEMENT', 'ENREGISTREE'].includes(demande.statut) &&
+      demande.pieces?.length > 0 &&
+      allPiecesVerified() &&
+      !allPiecesConformes();
   };
 
   const canGenerateAttestation = () => {
@@ -131,7 +160,7 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
 
   const handleMarquerPiecesNonConformes = async () => {
     if (!demande?.pieces) return;
-    
+
     // Récupérer les pièces non conformes déjà vérifiées
     const piecesNonConformes = demande.pieces
       .filter((piece: any) => piece.present && piece.conforme === false)
@@ -285,11 +314,60 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
           </Button>
         )}
         {demande.attestation && (
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const link = document.createElement('a');
+              link.href = `/api/attestations/${demande.attestation.id}/download`;
+              link.download = `attestation-${demande.attestation.numero}.pdf`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+          >
             <Download className="h-4 w-4 mr-2" />
             Télécharger l'attestation
           </Button>
         )}
+
+        {/* Menu de changement de statut - toujours visible */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Changer le statut
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem
+              onClick={() => handleChangeStatut('SOUMISE')}
+              disabled={demande.statut === 'SOUMISE'}
+            >
+              Soumise
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleChangeStatut('EN_COURS')}
+              disabled={demande.statut === 'EN_COURS'}
+            >
+              En cours de traitement
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => handleChangeStatut('VALIDEE')}
+              disabled={demande.statut === 'VALIDEE'}
+              className="text-green-600"
+            >
+              Validée
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleChangeStatut('REJETEE')}
+              disabled={demande.statut === 'REJETEE'}
+              className="text-red-600"
+            >
+              Rejetée
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -414,15 +492,14 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
                   {demande.pieces.map((piece: any) => (
                     <div
                       key={piece.id}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        !piece.present
-                          ? 'border-gray-200 bg-gray-100 opacity-60'
-                          : piece.conforme === true
+                      className={`p-4 rounded-lg border-2 transition-all ${!piece.present
+                        ? 'border-gray-200 bg-gray-100 opacity-60'
+                        : piece.conforme === true
                           ? 'border-green-500 bg-green-50'
                           : piece.conforme === false
-                          ? 'border-red-500 bg-red-50'
-                          : 'border-gray-300 bg-white'
-                      }`}
+                            ? 'border-red-500 bg-red-50'
+                            : 'border-gray-300 bg-white'
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
@@ -435,7 +512,7 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
                           {piece.observation && (
                             <p className="text-sm text-muted-foreground mb-3">{piece.observation}</p>
                           )}
-                          
+
                           {/* Boutons de vérification */}
                           {['EN_TRAITEMENT', 'ENREGISTREE', 'PIECES_NON_CONFORMES'].includes(demande.statut) && (
                             <div className="flex gap-2">
@@ -469,7 +546,7 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
                             </div>
                           )}
                         </div>
-                        
+
                         {/* Icône de statut */}
                         <div>
                           {piece.conforme === true ? (
@@ -486,13 +563,12 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
                 </div>
 
                 {/* Résumé de la vérification */}
-                <div className={`p-4 rounded-lg border ${
-                  allPiecesVerified() 
-                    ? allPiecesConformes()
-                      ? 'border-green-200 bg-green-50'
-                      : 'border-orange-200 bg-orange-50'
-                    : 'border-blue-200 bg-blue-50'
-                }`}>
+                <div className={`p-4 rounded-lg border ${allPiecesVerified()
+                  ? allPiecesConformes()
+                    ? 'border-green-200 bg-green-50'
+                    : 'border-orange-200 bg-orange-50'
+                  : 'border-blue-200 bg-blue-50'
+                  }`}>
                   <div className="flex items-center gap-2">
                     {allPiecesVerified() ? (
                       allPiecesConformes() ? (

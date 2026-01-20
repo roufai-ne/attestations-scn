@@ -9,19 +9,28 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Save,
     Eye,
-    Undo,
-    Redo,
     ZoomIn,
     ZoomOut,
     Trash2,
-    GripVertical,
     Type,
     Calendar,
     QrCode,
     PenTool,
+    Layout,
+    Move,
+    FileText,
+    Loader2,
+    Grid3X3,
+    Magnet,
+    ArrowUp,
+    ArrowDown,
+    ArrowLeft,
+    ArrowRight,
+    Copy,
 } from 'lucide-react';
 import {
     Select,
@@ -56,6 +65,23 @@ interface TemplateConfig {
     pageHeight: number;
     pageOrientation: string;
     fields: TemplateField[];
+    layout?: {
+        margeHaut: number;
+        margeBas: number;
+        margeGauche: number;
+        margeDroite: number;
+    };
+    signaturePosition?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
+    qrCodePosition?: {
+        x: number;
+        y: number;
+        size: number;
+    };
 }
 
 interface Template {
@@ -73,11 +99,32 @@ const SAMPLE_DATA: Record<string, string> = {
     dateNaissance: '15 mai 1995',
     lieuNaissance: 'Niamey',
     diplome: 'Licence en Informatique',
-    lieuService: 'Ministère de l\'Éducation',
+    lieuService: "Ministère de l'Éducation",
     dateDebutService: '01/01/2024',
     dateFinService: '31/12/2024',
     dateSignature: '15 janvier 2026',
     nomDirecteur: 'Dr. DOUMA SOUMANA M.C',
+    promotion: '2023-2024',
+};
+
+const DEFAULT_LAYOUT = {
+    margeHaut: 20,
+    margeBas: 20,
+    margeGauche: 25,
+    margeDroite: 25,
+};
+
+const DEFAULT_SIGNATURE_POSITION = {
+    x: 550,
+    y: 450,
+    width: 150,
+    height: 60,
+};
+
+const DEFAULT_QR_POSITION = {
+    x: 50,
+    y: 450,
+    size: 80,
 };
 
 export default function TemplateEditorPage() {
@@ -89,18 +136,73 @@ export default function TemplateEditorPage() {
     const [config, setConfig] = useState<TemplateConfig | null>(null);
     const [availableFields, setAvailableFields] = useState<TemplateField[]>([]);
     const [selectedField, setSelectedField] = useState<string | null>(null);
+    const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [generatingPreview, setGeneratingPreview] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [zoom, setZoom] = useState(0.8);
     const [dragging, setDragging] = useState<string | null>(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [activeTab, setActiveTab] = useState('champ');
+    const [showGrid, setShowGrid] = useState(true);
+    const [snapToGrid, setSnapToGrid] = useState(true);
+    const gridSize = 20; // Taille de la grille en points
 
     useEffect(() => {
         fetchTemplate();
         fetchAvailableFields();
     }, [params.id]);
+
+    // Gestion des touches clavier pour déplacement et suppression
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!selectedField || !config) return;
+
+            // Ne pas interférer avec les inputs
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+            const moveStep = e.shiftKey ? 10 : (snapToGrid ? gridSize : 1);
+
+            switch (e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    updateField(selectedField, {
+                        y: Math.max(0, (config.fields.find(f => f.id === selectedField)?.y || 0) - moveStep)
+                    });
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    updateField(selectedField, {
+                        y: Math.min(config.pageHeight - 20, (config.fields.find(f => f.id === selectedField)?.y || 0) + moveStep)
+                    });
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    updateField(selectedField, {
+                        x: Math.max(0, (config.fields.find(f => f.id === selectedField)?.x || 0) - moveStep)
+                    });
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    updateField(selectedField, {
+                        x: Math.min(config.pageWidth - 50, (config.fields.find(f => f.id === selectedField)?.x || 0) + moveStep)
+                    });
+                    break;
+                case 'Delete':
+                case 'Backspace':
+                    if (!(e.target instanceof HTMLInputElement)) {
+                        e.preventDefault();
+                        removeField(selectedField);
+                    }
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedField, config, snapToGrid, gridSize]);
 
     const fetchTemplate = async () => {
         try {
@@ -115,6 +217,9 @@ export default function TemplateEditorPage() {
                     pageHeight: 595,
                     pageOrientation: 'landscape',
                     fields: [],
+                    layout: DEFAULT_LAYOUT,
+                    signaturePosition: DEFAULT_SIGNATURE_POSITION,
+                    qrCodePosition: DEFAULT_QR_POSITION,
                 });
             }
         } catch (err) {
@@ -154,7 +259,7 @@ export default function TemplateEditorPage() {
                 setSuccess('Template enregistré avec succès');
             } else {
                 const data = await response.json();
-                setError(data.error || 'Erreur lors de l\'enregistrement');
+                setError(data.error || "Erreur lors de l'enregistrement");
             }
         } catch (err) {
             setError('Erreur de connexion');
@@ -163,10 +268,37 @@ export default function TemplateEditorPage() {
         }
     };
 
+    const handlePreviewPDF = async () => {
+        if (!config) return;
+
+        setGeneratingPreview(true);
+        setError('');
+
+        try {
+            const response = await fetch(`/api/admin/templates/${params.id}/preview`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ config }),
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            } else {
+                const data = await response.json();
+                setError(data.error || 'Erreur lors de la génération');
+            }
+        } catch (err) {
+            setError('Erreur de connexion');
+        } finally {
+            setGeneratingPreview(false);
+        }
+    };
+
     const addField = (fieldTemplate: TemplateField) => {
         if (!config) return;
 
-        // Vérifier si le champ existe déjà
         if (config.fields.find((f) => f.id === fieldTemplate.id)) {
             setError(`Le champ "${fieldTemplate.label}" est déjà ajouté`);
             return;
@@ -210,15 +342,43 @@ export default function TemplateEditorPage() {
         });
     };
 
+    const updateLayout = (updates: Partial<typeof DEFAULT_LAYOUT>) => {
+        if (!config) return;
+        setConfig({
+            ...config,
+            layout: { ...config.layout || DEFAULT_LAYOUT, ...updates },
+        });
+    };
+
+    const updateSignaturePosition = (updates: Partial<typeof DEFAULT_SIGNATURE_POSITION>) => {
+        if (!config) return;
+        setConfig({
+            ...config,
+            signaturePosition: { ...config.signaturePosition || DEFAULT_SIGNATURE_POSITION, ...updates },
+        });
+    };
+
+    const updateQrCodePosition = (updates: Partial<typeof DEFAULT_QR_POSITION>) => {
+        if (!config) return;
+        setConfig({
+            ...config,
+            qrCodePosition: { ...config.qrCodePosition || DEFAULT_QR_POSITION, ...updates },
+        });
+    };
+
     const handleMouseDown = (e: React.MouseEvent, fieldId: string) => {
         e.preventDefault();
+        e.stopPropagation();
         const field = config?.fields.find((f) => f.id === fieldId);
         if (!field || !canvasRef.current) return;
 
         const rect = canvasRef.current.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left) / zoom;
+        const mouseY = (e.clientY - rect.top) / zoom;
+
         setDragOffset({
-            x: e.clientX / zoom - field.x,
-            y: e.clientY / zoom - field.y,
+            x: mouseX - field.x,
+            y: mouseY - field.y,
         });
         setDragging(fieldId);
         setSelectedField(fieldId);
@@ -229,12 +389,22 @@ export default function TemplateEditorPage() {
             if (!dragging || !config || !canvasRef.current) return;
 
             const rect = canvasRef.current.getBoundingClientRect();
-            const x = Math.max(0, (e.clientX - rect.left) / zoom - dragOffset.x);
-            const y = Math.max(0, (e.clientY - rect.top) / zoom - dragOffset.y);
+            let x = Math.max(0, (e.clientX - rect.left) / zoom - dragOffset.x);
+            let y = Math.max(0, (e.clientY - rect.top) / zoom - dragOffset.y);
+
+            // Snap to grid si activé
+            if (snapToGrid) {
+                x = Math.round(x / gridSize) * gridSize;
+                y = Math.round(y / gridSize) * gridSize;
+            }
+
+            // Limiter aux dimensions de la page
+            x = Math.min(x, config.pageWidth - 50);
+            y = Math.min(y, config.pageHeight - 20);
 
             updateField(dragging, { x: Math.round(x), y: Math.round(y) });
         },
-        [dragging, zoom, dragOffset, config]
+        [dragging, zoom, dragOffset, config, snapToGrid, gridSize]
     );
 
     const handleMouseUp = () => {
@@ -255,6 +425,9 @@ export default function TemplateEditorPage() {
     };
 
     const selectedFieldData = config?.fields.find((f) => f.id === selectedField);
+    const layout = config?.layout || DEFAULT_LAYOUT;
+    const signaturePos = config?.signaturePosition || DEFAULT_SIGNATURE_POSITION;
+    const qrPos = config?.qrCodePosition || DEFAULT_QR_POSITION;
 
     if (loading) {
         return (
@@ -282,7 +455,7 @@ export default function TemplateEditorPage() {
                     <div>
                         <Breadcrumbs
                             items={[
-                                { label: 'Administration', href: '/admin' },
+                                { label: 'Administration', href: '/admin/dashboard' },
                                 { label: 'Templates', href: '/admin/templates' },
                                 { label: template.nom },
                             ]}
@@ -297,6 +470,35 @@ export default function TemplateEditorPage() {
                             <ZoomIn className="h-4 w-4" />
                         </Button>
                         <div className="w-px h-6 bg-gray-200 mx-2" />
+                        <Button
+                            variant={showGrid ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setShowGrid(!showGrid)}
+                            title="Afficher/masquer la grille"
+                        >
+                            <Grid3X3 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant={snapToGrid ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setSnapToGrid(!snapToGrid)}
+                            title="Aimanter à la grille"
+                        >
+                            <Magnet className="h-4 w-4" />
+                        </Button>
+                        <div className="w-px h-6 bg-gray-200 mx-2" />
+                        <Button
+                            variant="outline"
+                            onClick={handlePreviewPDF}
+                            disabled={generatingPreview}
+                        >
+                            {generatingPreview ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Eye className="h-4 w-4 mr-2" />
+                            )}
+                            Aperçu PDF
+                        </Button>
                         <Button variant="outline" onClick={() => router.back()}>
                             Annuler
                         </Button>
@@ -335,8 +537,8 @@ export default function TemplateEditorPage() {
                                     onClick={() => !isAdded && addField(field as TemplateField)}
                                     disabled={isAdded}
                                     className={`w-full flex items-center gap-2 p-2 rounded-lg text-left text-sm transition ${isAdded
-                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                            : 'bg-white hover:bg-blue-50 border hover:border-blue-300'
+                                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                        : 'bg-white hover:bg-blue-50 border hover:border-blue-300'
                                         }`}
                                 >
                                     {getFieldIcon(field.type)}
@@ -367,6 +569,47 @@ export default function TemplateEditorPage() {
                             backgroundPosition: 'center',
                         }}
                     >
+                        {/* Grille de positionnement */}
+                        {showGrid && (
+                            <svg
+                                className="absolute inset-0 pointer-events-none"
+                                width={config.pageWidth * zoom}
+                                height={config.pageHeight * zoom}
+                            >
+                                <defs>
+                                    <pattern
+                                        id="grid"
+                                        width={gridSize * zoom}
+                                        height={gridSize * zoom}
+                                        patternUnits="userSpaceOnUse"
+                                    >
+                                        <path
+                                            d={`M ${gridSize * zoom} 0 L 0 0 0 ${gridSize * zoom}`}
+                                            fill="none"
+                                            stroke="rgba(59, 130, 246, 0.3)"
+                                            strokeWidth="0.5"
+                                        />
+                                    </pattern>
+                                    {/* Pattern pour les lignes majeures (tous les 100px) */}
+                                    <pattern
+                                        id="gridMajor"
+                                        width={100 * zoom}
+                                        height={100 * zoom}
+                                        patternUnits="userSpaceOnUse"
+                                    >
+                                        <path
+                                            d={`M ${100 * zoom} 0 L 0 0 0 ${100 * zoom}`}
+                                            fill="none"
+                                            stroke="rgba(59, 130, 246, 0.5)"
+                                            strokeWidth="1"
+                                        />
+                                    </pattern>
+                                </defs>
+                                <rect width="100%" height="100%" fill="url(#grid)" />
+                                <rect width="100%" height="100%" fill="url(#gridMajor)" />
+                            </svg>
+                        )}
+
                         {/* Champs placés */}
                         {config.fields.map((field) => (
                             <div
@@ -427,153 +670,383 @@ export default function TemplateEditorPage() {
                                 </button>
                             </div>
                         ))}
+
+                        {/* Les indicateurs QR Code et Signature ont été supprimés.
+                            Les positions sont configurables via l'onglet "Positions" du panneau de droite */}
                     </div>
                 </div>
 
-                {/* Panel de propriétés */}
-                <div className="w-72 border-l bg-white p-4 overflow-y-auto">
-                    <h3 className="font-semibold mb-4">Propriétés</h3>
-                    {selectedFieldData ? (
-                        <div className="space-y-4">
-                            <p className="text-sm text-gray-500">{selectedFieldData.label}</p>
+                {/* Panel de propriétés avec onglets */}
+                <div className="w-80 border-l bg-white overflow-y-auto">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+                        <TabsList className="w-full grid grid-cols-3 p-1 m-2">
+                            <TabsTrigger value="champ" className="text-xs">
+                                <Type className="h-3 w-3 mr-1" />
+                                Champ
+                            </TabsTrigger>
+                            <TabsTrigger value="layout" className="text-xs">
+                                <Layout className="h-3 w-3 mr-1" />
+                                Layout
+                            </TabsTrigger>
+                            <TabsTrigger value="positions" className="text-xs">
+                                <Move className="h-3 w-3 mr-1" />
+                                Positions
+                            </TabsTrigger>
+                        </TabsList>
 
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <Label className="text-xs">X</Label>
-                                    <Input
-                                        type="number"
-                                        value={selectedFieldData.x}
-                                        onChange={(e) =>
-                                            updateField(selectedFieldData.id, { x: parseInt(e.target.value) || 0 })
-                                        }
-                                    />
+                        {/* Onglet Champ */}
+                        <TabsContent value="champ" className="flex-1 p-4 overflow-y-auto">
+                            <h3 className="font-semibold mb-4">Propriétés du champ</h3>
+                            {selectedFieldData ? (
+                                <div className="space-y-4">
+                                    <p className="text-sm text-gray-500">{selectedFieldData.label}</p>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label className="text-xs">X</Label>
+                                            <Input
+                                                type="number"
+                                                value={selectedFieldData.x}
+                                                onChange={(e) =>
+                                                    updateField(selectedFieldData.id, { x: parseInt(e.target.value) || 0 })
+                                                }
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">Y</Label>
+                                            <Input
+                                                type="number"
+                                                value={selectedFieldData.y}
+                                                onChange={(e) =>
+                                                    updateField(selectedFieldData.id, { y: parseInt(e.target.value) || 0 })
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Boutons de positionnement précis */}
+                                    <div className="bg-gray-50 rounded-lg p-3">
+                                        <Label className="text-xs mb-2 block text-gray-600">Déplacement fin</Label>
+                                        <div className="flex items-center justify-center gap-1">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0"
+                                                    onClick={() => updateField(selectedFieldData.id, { y: Math.max(0, selectedFieldData.y - (snapToGrid ? gridSize : 1)) })}
+                                                    title="Monter (↑)"
+                                                >
+                                                    <ArrowUp className="h-4 w-4" />
+                                                </Button>
+                                                <div className="flex gap-1">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0"
+                                                        onClick={() => updateField(selectedFieldData.id, { x: Math.max(0, selectedFieldData.x - (snapToGrid ? gridSize : 1)) })}
+                                                        title="Gauche (←)"
+                                                    >
+                                                        <ArrowLeft className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0"
+                                                        onClick={() => updateField(selectedFieldData.id, { x: Math.min(config.pageWidth - 50, selectedFieldData.x + (snapToGrid ? gridSize : 1)) })}
+                                                        title="Droite (→)"
+                                                    >
+                                                        <ArrowRight className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0"
+                                                    onClick={() => updateField(selectedFieldData.id, { y: Math.min(config.pageHeight - 20, selectedFieldData.y + (snapToGrid ? gridSize : 1)) })}
+                                                    title="Descendre (↓)"
+                                                >
+                                                    <ArrowDown className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 text-center mt-2">
+                                            Utilisez les flèches clavier ou Shift+flèches pour déplacement ×10
+                                        </p>
+                                    </div>
+
+                                    {selectedFieldData.type === 'text' || selectedFieldData.type === 'date' ? (
+                                        <>
+                                            <div>
+                                                <Label className="text-xs">Taille police</Label>
+                                                <Input
+                                                    type="number"
+                                                    min={8}
+                                                    max={48}
+                                                    value={selectedFieldData.fontSize}
+                                                    onChange={(e) =>
+                                                        updateField(selectedFieldData.id, { fontSize: parseInt(e.target.value) || 12 })
+                                                    }
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <Label className="text-xs">Police</Label>
+                                                <Select
+                                                    value={selectedFieldData.fontFamily}
+                                                    onValueChange={(value) =>
+                                                        updateField(selectedFieldData.id, { fontFamily: value })
+                                                    }
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Helvetica">Helvetica</SelectItem>
+                                                        <SelectItem value="Times">Times</SelectItem>
+                                                        <SelectItem value="Courier">Courier</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div>
+                                                <Label className="text-xs">Graisse</Label>
+                                                <Select
+                                                    value={selectedFieldData.fontWeight}
+                                                    onValueChange={(value) =>
+                                                        updateField(selectedFieldData.id, { fontWeight: value })
+                                                    }
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="normal">Normal</SelectItem>
+                                                        <SelectItem value="bold">Gras</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div>
+                                                <Label className="text-xs">Couleur</Label>
+                                                <Input
+                                                    type="color"
+                                                    value={selectedFieldData.color}
+                                                    onChange={(e) =>
+                                                        updateField(selectedFieldData.id, { color: e.target.value })
+                                                    }
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <Label className="text-xs">Préfixe</Label>
+                                                <Input
+                                                    value={selectedFieldData.prefix || ''}
+                                                    onChange={(e) =>
+                                                        updateField(selectedFieldData.id, { prefix: e.target.value })
+                                                    }
+                                                    placeholder="Ex: Né(e) le "
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <Label className="text-xs">Largeur</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={selectedFieldData.width || 80}
+                                                    onChange={(e) =>
+                                                        updateField(selectedFieldData.id, { width: parseInt(e.target.value) || 80 })
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label className="text-xs">Hauteur</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={selectedFieldData.height || 80}
+                                                    onChange={(e) =>
+                                                        updateField(selectedFieldData.id, { height: parseInt(e.target.value) || 80 })
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="w-full"
+                                        onClick={() => removeField(selectedFieldData.id)}
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Supprimer ce champ
+                                    </Button>
                                 </div>
-                                <div>
-                                    <Label className="text-xs">Y</Label>
-                                    <Input
-                                        type="number"
-                                        value={selectedFieldData.y}
-                                        onChange={(e) =>
-                                            updateField(selectedFieldData.id, { y: parseInt(e.target.value) || 0 })
-                                        }
-                                    />
-                                </div>
-                            </div>
-
-                            {selectedFieldData.type === 'text' || selectedFieldData.type === 'date' ? (
-                                <>
-                                    <div>
-                                        <Label className="text-xs">Taille police</Label>
-                                        <Input
-                                            type="number"
-                                            min={8}
-                                            max={48}
-                                            value={selectedFieldData.fontSize}
-                                            onChange={(e) =>
-                                                updateField(selectedFieldData.id, { fontSize: parseInt(e.target.value) || 12 })
-                                            }
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label className="text-xs">Police</Label>
-                                        <Select
-                                            value={selectedFieldData.fontFamily}
-                                            onValueChange={(value) =>
-                                                updateField(selectedFieldData.id, { fontFamily: value })
-                                            }
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Helvetica">Helvetica</SelectItem>
-                                                <SelectItem value="Times">Times</SelectItem>
-                                                <SelectItem value="Courier">Courier</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div>
-                                        <Label className="text-xs">Graisse</Label>
-                                        <Select
-                                            value={selectedFieldData.fontWeight}
-                                            onValueChange={(value) =>
-                                                updateField(selectedFieldData.id, { fontWeight: value })
-                                            }
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="normal">Normal</SelectItem>
-                                                <SelectItem value="bold">Gras</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div>
-                                        <Label className="text-xs">Couleur</Label>
-                                        <Input
-                                            type="color"
-                                            value={selectedFieldData.color}
-                                            onChange={(e) =>
-                                                updateField(selectedFieldData.id, { color: e.target.value })
-                                            }
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label className="text-xs">Préfixe</Label>
-                                        <Input
-                                            value={selectedFieldData.prefix || ''}
-                                            onChange={(e) =>
-                                                updateField(selectedFieldData.id, { prefix: e.target.value })
-                                            }
-                                            placeholder="Ex: Né(e) le "
-                                        />
-                                    </div>
-                                </>
                             ) : (
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <Label className="text-xs">Largeur</Label>
-                                        <Input
-                                            type="number"
-                                            value={selectedFieldData.width || 80}
-                                            onChange={(e) =>
-                                                updateField(selectedFieldData.id, { width: parseInt(e.target.value) || 80 })
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="text-xs">Hauteur</Label>
-                                        <Input
-                                            type="number"
-                                            value={selectedFieldData.height || 80}
-                                            onChange={(e) =>
-                                                updateField(selectedFieldData.id, { height: parseInt(e.target.value) || 80 })
-                                            }
-                                        />
-                                    </div>
-                                </div>
+                                <p className="text-sm text-gray-500">
+                                    Sélectionnez un champ pour modifier ses propriétés
+                                </p>
                             )}
+                        </TabsContent>
 
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                className="w-full"
-                                onClick={() => removeField(selectedFieldData.id)}
-                            >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Supprimer ce champ
-                            </Button>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-gray-500">
-                            Sélectionnez un champ pour modifier ses propriétés
-                        </p>
-                    )}
+                        {/* Onglet Layout */}
+                        <TabsContent value="layout" className="flex-1 p-4 overflow-y-auto">
+                            <h3 className="font-semibold mb-4">Mise en page</h3>
+
+                            <Card className="mb-4">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm">Marges (mm)</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label className="text-xs">Haut</Label>
+                                            <Input
+                                                type="number"
+                                                value={layout.margeHaut}
+                                                onChange={(e) => updateLayout({ margeHaut: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">Bas</Label>
+                                            <Input
+                                                type="number"
+                                                value={layout.margeBas}
+                                                onChange={(e) => updateLayout({ margeBas: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">Gauche</Label>
+                                            <Input
+                                                type="number"
+                                                value={layout.margeGauche}
+                                                onChange={(e) => updateLayout({ margeGauche: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">Droite</Label>
+                                            <Input
+                                                type="number"
+                                                value={layout.margeDroite}
+                                                onChange={(e) => updateLayout({ margeDroite: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm">Orientation</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Select
+                                        value={config.pageOrientation}
+                                        onValueChange={(value) => setConfig({ ...config, pageOrientation: value })}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="landscape">Paysage (A4)</SelectItem>
+                                            <SelectItem value="portrait">Portrait (A4)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* Onglet Positions */}
+                        <TabsContent value="positions" className="flex-1 p-4 overflow-y-auto">
+                            <h3 className="font-semibold mb-4">Positions fixes</h3>
+                            <p className="text-xs text-gray-500 mb-4">
+                                Ces positions sont utilisées lors de la signature électronique
+                            </p>
+
+                            <Card className="mb-4 border-orange-200">
+                                <CardHeader className="pb-2 bg-orange-50">
+                                    <CardTitle className="text-sm flex items-center gap-2">
+                                        <PenTool className="h-4 w-4 text-orange-600" />
+                                        Signature
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3 pt-3">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label className="text-xs">Position X</Label>
+                                            <Input
+                                                type="number"
+                                                value={signaturePos.x}
+                                                onChange={(e) => updateSignaturePosition({ x: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">Position Y</Label>
+                                            <Input
+                                                type="number"
+                                                value={signaturePos.y}
+                                                onChange={(e) => updateSignaturePosition({ y: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">Largeur</Label>
+                                            <Input
+                                                type="number"
+                                                value={signaturePos.width}
+                                                onChange={(e) => updateSignaturePosition({ width: parseInt(e.target.value) || 150 })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">Hauteur</Label>
+                                            <Input
+                                                type="number"
+                                                value={signaturePos.height}
+                                                onChange={(e) => updateSignaturePosition({ height: parseInt(e.target.value) || 60 })}
+                                            />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-purple-200">
+                                <CardHeader className="pb-2 bg-purple-50">
+                                    <CardTitle className="text-sm flex items-center gap-2">
+                                        <QrCode className="h-4 w-4 text-purple-600" />
+                                        QR Code
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3 pt-3">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label className="text-xs">Position X</Label>
+                                            <Input
+                                                type="number"
+                                                value={qrPos.x}
+                                                onChange={(e) => updateQrCodePosition({ x: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">Position Y</Label>
+                                            <Input
+                                                type="number"
+                                                value={qrPos.y}
+                                                onChange={(e) => updateQrCodePosition({ y: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <Label className="text-xs">Taille</Label>
+                                        <Input
+                                            type="number"
+                                            value={qrPos.size}
+                                            onChange={(e) => updateQrCodePosition({ size: parseInt(e.target.value) || 80 })}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </div>
         </div>

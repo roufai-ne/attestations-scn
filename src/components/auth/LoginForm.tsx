@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Mail, Lock, AlertCircle, Loader2, Shield } from "lucide-react"
+import Link from "next/link"
+import { Mail, Lock, AlertCircle, Loader2 } from "lucide-react"
 
 export default function LoginForm() {
     const router = useRouter()
@@ -41,112 +42,88 @@ export default function LoginForm() {
     }
 
     return (
-        <div className="w-full max-w-md mx-auto">
-            {/* Logo/Header */}
-            <div className="text-center mb-8">
-                <div className="inline-flex p-4 bg-gradient-to-br from-green-600 to-orange-600 rounded-2xl mb-4 shadow-lg">
-                    <Shield className="h-12 w-12 text-white" />
-                </div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    Bienvenue
-                </h1>
-                <p className="text-gray-600">
-                    Connectez-vous à votre espace sécurisé
-                </p>
-            </div>
-
-            {/* Form Card */}
-            <div className="rounded-2xl bg-white p-8 shadow-xl border border-gray-100">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {error && (
-                        <div className="flex items-start gap-3 rounded-xl bg-red-50 p-4 border border-red-100">
-                            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-sm font-medium text-red-900">{error}</p>
-                                <p className="text-xs text-red-700 mt-1">
-                                    Vérifiez vos identifiants et réessayez
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="space-y-2">
-                        <label
-                            htmlFor="email"
-                            className="block text-sm font-semibold text-gray-700"
-                        >
-                            Adresse email
-                        </label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-                            <input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                className="w-full rounded-xl border border-gray-300 bg-gray-50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-green-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20"
-                                placeholder="votre.email@example.com"
-                                disabled={isLoading}
-                            />
+        <div className="w-full">
+            <form onSubmit={handleSubmit} className="space-y-5">
+                {error && (
+                    <div className="flex items-start gap-3 rounded-xl bg-red-50 p-4 border border-red-100">
+                        <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-medium text-red-900">{error}</p>
+                            <p className="text-xs text-red-700 mt-1">
+                                Vérifiez vos identifiants et réessayez
+                            </p>
                         </div>
                     </div>
+                )}
 
-                    <div className="space-y-2">
-                        <label
-                            htmlFor="password"
-                            className="block text-sm font-semibold text-gray-700"
-                        >
-                            Mot de passe
-                        </label>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-                            <input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                className="w-full rounded-xl border border-gray-300 bg-gray-50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-green-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20"
-                                placeholder="••••••••"
-                                disabled={isLoading}
-                            />
-                        </div>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full rounded-xl bg-gradient-to-r from-green-600 to-orange-600 py-3.5 font-semibold text-white shadow-lg shadow-green-500/30 transition-all hover:shadow-xl hover:shadow-green-500/40 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-lg"
+                <div className="space-y-2">
+                    <label
+                        htmlFor="email"
+                        className="block text-sm font-semibold text-[var(--text-dark)]"
                     >
-                        {isLoading ? (
-                            <span className="flex items-center justify-center gap-2">
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                                Connexion en cours...
-                            </span>
-                        ) : (
-                            "Se connecter"
-                        )}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center">
-                    <p className="text-sm text-gray-500">
-                        Vous avez oublié votre mot de passe ?{" "}
-                        <a href="/forgot-password" className="font-medium text-green-600 hover:text-green-700 hover:underline">
-                            Réinitialiser
-                        </a>
-                    </p>
+                        Adresse email
+                    </label>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--text-muted)]" />
+                        <input
+                            id="email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-[var(--text-dark)] placeholder-[var(--text-muted)] transition-all focus:border-[var(--accent-orange)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-orange)]/20"
+                            placeholder="votre.email@example.com"
+                            disabled={isLoading}
+                        />
+                    </div>
                 </div>
-            </div>
 
-            {/* Info footer */}
-            <div className="mt-6 text-center text-sm text-gray-500">
-                <p>
-                    Plateforme sécurisée du Service Civique National
-                </p>
+                <div className="space-y-2">
+                    <label
+                        htmlFor="password"
+                        className="block text-sm font-semibold text-[var(--text-dark)]"
+                    >
+                        Mot de passe
+                    </label>
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--text-muted)]" />
+                        <input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-[var(--text-dark)] placeholder-[var(--text-muted)] transition-all focus:border-[var(--accent-orange)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-orange)]/20"
+                            placeholder="••••••••"
+                            disabled={isLoading}
+                        />
+                    </div>
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full rounded-xl bg-[var(--accent-orange)] hover:bg-[var(--accent-orange-dark)] py-3.5 font-semibold text-white shadow-lg transition-all hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-orange)] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Connexion en cours...
+                        </span>
+                    ) : (
+                        "Se connecter"
+                    )}
+                </button>
+            </form>
+
+            <div className="mt-6 text-center space-y-3">
+                <Link
+                    href="/forgot-password"
+                    className="text-sm text-[var(--accent-orange)] hover:text-[var(--accent-orange-dark)] hover:underline font-medium"
+                >
+                    Mot de passe oublié ?
+                </Link>
             </div>
         </div>
     )
 }
-

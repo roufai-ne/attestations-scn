@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import {
     Eye,
     Play,
     MoreVertical,
+    ArrowLeft,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -35,6 +37,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { useConfirm } from '@/components/shared/ConfirmProvider';
 
 interface Template {
     id: string;
@@ -49,6 +53,7 @@ interface Template {
 }
 
 export default function TemplatesPage() {
+    const router = useRouter();
     const [templates, setTemplates] = useState<Template[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -126,8 +131,18 @@ export default function TemplatesPage() {
         }
     };
 
+    const confirmDialog = useConfirm();
+
     const handleDelete = async (id: string) => {
-        if (!confirm('Êtes-vous sûr de vouloir supprimer ce template ?')) return;
+        const confirmed = await confirmDialog({
+            title: 'Supprimer le template',
+            description: 'Êtes-vous sûr de vouloir supprimer ce template ? Cette action est irréversible.',
+            confirmText: 'Supprimer',
+            cancelText: 'Annuler',
+            variant: 'destructive',
+        });
+
+        if (!confirmed) return;
 
         try {
             const response = await fetch(`/api/admin/templates/${id}`, {
@@ -136,12 +151,13 @@ export default function TemplatesPage() {
 
             if (response.ok) {
                 fetchTemplates();
+                toast.success('Template supprimé avec succès');
             } else {
                 const data = await response.json();
-                setError(data.error || 'Erreur lors de la suppression');
+                toast.error(data.error || 'Erreur lors de la suppression');
             }
         } catch (err) {
-            setError('Erreur de connexion');
+            toast.error('Erreur de connexion');
         }
     };
 
@@ -155,12 +171,17 @@ export default function TemplatesPage() {
 
     return (
         <div className="container mx-auto p-6">
-            <Breadcrumbs
-                items={[
-                    { label: 'Administration', href: '/admin' },
-                    { label: 'Templates d\'attestation' },
-                ]}
-            />
+            <div className="flex items-center gap-4 mb-4">
+                <Button variant="ghost" size="icon" onClick={() => router.push('/admin/dashboard')}>
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Breadcrumbs
+                    items={[
+                        { label: 'Administration', href: '/admin/dashboard' },
+                        { label: 'Templates d\'attestation' },
+                    ]}
+                />
+            </div>
 
             <div className="flex items-center justify-between mb-6">
                 <div>

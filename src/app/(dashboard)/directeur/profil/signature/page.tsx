@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Upload, Loader2, CheckCircle, QrCode, PenTool } from 'lucide-react';
+import { Upload, Loader2, CheckCircle, PenTool, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function SignatureConfigPage() {
@@ -20,17 +20,7 @@ export default function SignatureConfigPage() {
     const [texteSignature, setTexteSignature] = useState('Le Directeur du Service Civique National');
     const [pin, setPin] = useState('');
     const [pinConfirm, setPinConfirm] = useState('');
-
-    // Positions de la signature
-    const [positionX, setPositionX] = useState(500);
-    const [positionY, setPositionY] = useState(100);
-    const [signatureWidth, setSignatureWidth] = useState(150);
-    const [signatureHeight, setSignatureHeight] = useState(60);
-
-    // Positions du QR Code
-    const [qrCodePositionX, setQrCodePositionX] = useState(50);
-    const [qrCodePositionY, setQrCodePositionY] = useState(500);
-    const [qrCodeSize, setQrCodeSize] = useState(80);
+    const [isConfigured, setIsConfigured] = useState(false);
 
     // Charger la configuration existante
     useEffect(() => {
@@ -40,14 +30,8 @@ export default function SignatureConfigPage() {
                 const data = await response.json();
 
                 if (data.configured && data.config) {
+                    setIsConfigured(true);
                     setTexteSignature(data.config.texteSignature || texteSignature);
-                    setPositionX(data.config.positionX || 500);
-                    setPositionY(data.config.positionY || 100);
-                    setSignatureWidth(data.config.signatureWidth || 150);
-                    setSignatureHeight(data.config.signatureHeight || 60);
-                    setQrCodePositionX(data.config.qrCodePositionX || 50);
-                    setQrCodePositionY(data.config.qrCodePositionY || 500);
-                    setQrCodeSize(data.config.qrCodeSize || 80);
 
                     if (data.config.signatureImage) {
                         setImagePreview(data.config.signatureImage);
@@ -114,13 +98,6 @@ export default function SignatureConfigPage() {
             }
             formData.append('texteSignature', texteSignature);
             formData.append('pin', pin);
-            formData.append('positionX', positionX.toString());
-            formData.append('positionY', positionY.toString());
-            formData.append('signatureWidth', signatureWidth.toString());
-            formData.append('signatureHeight', signatureHeight.toString());
-            formData.append('qrCodePositionX', qrCodePositionX.toString());
-            formData.append('qrCodePositionY', qrCodePositionY.toString());
-            formData.append('qrCodeSize', qrCodeSize.toString());
 
             const response = await fetch('/api/directeur/signature/config', {
                 method: 'POST',
@@ -159,11 +136,20 @@ export default function SignatureConfigPage() {
     }
 
     return (
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="max-w-2xl mx-auto space-y-6">
             <div>
                 <h1 className="text-3xl font-bold">Configuration de la signature</h1>
-                <p className="text-gray-600">Configurez votre signature électronique, le QR code et votre PIN</p>
+                <p className="text-gray-600">Configurez votre signature électronique et votre PIN de sécurité</p>
             </div>
+
+            {/* Info sur les positions */}
+            <Alert className="bg-blue-50 border-blue-200">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                    Les positions de la signature et du QR code sont configurées par l'administrateur
+                    dans les templates d'attestation. Vous n'avez qu'à fournir votre image de signature.
+                </AlertDescription>
+            </Alert>
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Image de signature */}
@@ -214,107 +200,16 @@ export default function SignatureConfigPage() {
                         </div>
 
                         <div>
-                            <Label htmlFor="texte">Texte de signature</Label>
+                            <Label htmlFor="texte">Votre nom / titre</Label>
                             <Input
                                 id="texte"
                                 value={texteSignature}
                                 onChange={(e) => setTexteSignature(e.target.value)}
                                 placeholder="Le Directeur..."
                             />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Positions */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Position de la signature sur l'attestation</CardTitle>
-                        <CardDescription>
-                            Définissez où sera placée votre signature sur le document (en points, A4 paysage = 842×595)
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                                <Label htmlFor="posX">Position X</Label>
-                                <Input
-                                    id="posX"
-                                    type="number"
-                                    value={positionX}
-                                    onChange={(e) => setPositionX(parseInt(e.target.value) || 0)}
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="posY">Position Y</Label>
-                                <Input
-                                    id="posY"
-                                    type="number"
-                                    value={positionY}
-                                    onChange={(e) => setPositionY(parseInt(e.target.value) || 0)}
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="sigW">Largeur</Label>
-                                <Input
-                                    id="sigW"
-                                    type="number"
-                                    value={signatureWidth}
-                                    onChange={(e) => setSignatureWidth(parseInt(e.target.value) || 150)}
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="sigH">Hauteur</Label>
-                                <Input
-                                    id="sigH"
-                                    type="number"
-                                    value={signatureHeight}
-                                    onChange={(e) => setSignatureHeight(parseInt(e.target.value) || 60)}
-                                />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Position QR Code */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <QrCode className="h-5 w-5" />
-                            Position du QR Code
-                        </CardTitle>
-                        <CardDescription>
-                            Définissez où sera placé le QR code de vérification
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div>
-                                <Label htmlFor="qrX">Position X</Label>
-                                <Input
-                                    id="qrX"
-                                    type="number"
-                                    value={qrCodePositionX}
-                                    onChange={(e) => setQrCodePositionX(parseInt(e.target.value) || 0)}
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="qrY">Position Y</Label>
-                                <Input
-                                    id="qrY"
-                                    type="number"
-                                    value={qrCodePositionY}
-                                    onChange={(e) => setQrCodePositionY(parseInt(e.target.value) || 0)}
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="qrSize">Taille</Label>
-                                <Input
-                                    id="qrSize"
-                                    type="number"
-                                    value={qrCodeSize}
-                                    onChange={(e) => setQrCodeSize(parseInt(e.target.value) || 80)}
-                                />
-                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Ce texte apparaîtra sous votre signature sur les attestations
+                            </p>
                         </div>
                     </CardContent>
                 </Card>
@@ -324,13 +219,15 @@ export default function SignatureConfigPage() {
                     <CardHeader>
                         <CardTitle>PIN de sécurité</CardTitle>
                         <CardDescription>
-                            Définissez un PIN de 4 à 6 chiffres pour signer les attestations
+                            {isConfigured
+                                ? 'Entrez un nouveau PIN pour mettre à jour votre configuration'
+                                : 'Définissez un PIN de 4 à 6 chiffres pour signer les attestations'}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="pin">PIN</Label>
+                                <Label htmlFor="pin">{isConfigured ? 'Nouveau PIN' : 'PIN'}</Label>
                                 <Input
                                     id="pin"
                                     type="password"
@@ -371,7 +268,7 @@ export default function SignatureConfigPage() {
                         ) : (
                             <>
                                 <CheckCircle className="mr-2 h-4 w-4" />
-                                Enregistrer la configuration
+                                {isConfigured ? 'Mettre à jour' : 'Enregistrer la configuration'}
                             </>
                         )}
                     </Button>
@@ -387,4 +284,3 @@ export default function SignatureConfigPage() {
         </div>
     );
 }
-

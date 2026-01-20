@@ -1,6 +1,7 @@
 import { Queue, Worker, Job } from 'bullmq';
 import { prisma } from '../prisma';
 import { StatutIndexation } from '@prisma/client';
+import { logger } from '@/lib/logger';
 
 // Configuration Redis
 const redisConnection = {
@@ -37,7 +38,7 @@ export const ocrWorker = new Worker<TextExtractionJobData>(
     async (job: Job<TextExtractionJobData>) => {
         const { arreteId, filePath } = job.data;
 
-        console.log(`🚀 Démarrage de l'extraction de texte pour l'arrêté ${arreteId}`);
+        logger.service('Queue', `Démarrage de l'extraction de texte pour l'arrêté ${arreteId}`);
 
         try {
             // Mettre à jour le statut à EN_COURS
@@ -77,7 +78,7 @@ export const ocrWorker = new Worker<TextExtractionJobData>(
 
             await job.updateProgress(100);
 
-            console.log(`✅ Extraction terminée pour l'arrêté ${arreteId} (${result.pageCount} pages, ${result.hasText ? 'texte trouvé' : 'PDF scanné'})`);
+            logger.info(`Extraction terminée pour l'arrêté ${arreteId} (${result.pageCount} pages, ${result.hasText ? 'texte trouvé' : 'PDF scanné'})`);
 
             return {
                 success: true,
@@ -87,7 +88,7 @@ export const ocrWorker = new Worker<TextExtractionJobData>(
             };
 
         } catch (error) {
-            console.error(`❌ Erreur lors du traitement OCR de l'arrêté ${arreteId}:`, error);
+            logger.error(`Erreur lors du traitement OCR de l'arrêté ${arreteId}: ${error}`);
 
             // Mettre à jour le statut à ERREUR
             await prisma.arrete.update({
@@ -109,11 +110,11 @@ export const ocrWorker = new Worker<TextExtractionJobData>(
 
 // Événements du worker
 ocrWorker.on('completed', (job) => {
-    console.log(`✅ Job ${job.id} complété`);
+    logger.debug(`Job ${job.id} complété`);
 });
 
 ocrWorker.on('failed', (job, err) => {
-    console.error(`❌ Job ${job?.id} échoué:`, err);
+    logger.error(`Job ${job?.id} échoué: ${err}`);
 });
 
 /**
@@ -129,7 +130,7 @@ export async function addOCRJob(arreteId: string, filePath: string) {
         }
     );
 
-    console.log(`📋 Job OCR ajouté à la queue: ${job.id}`);
+    logger.debug(`Job OCR ajouté à la queue: ${job.id}`);
 
     return job;
 }

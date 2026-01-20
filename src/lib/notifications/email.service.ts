@@ -4,6 +4,7 @@
  */
 
 import nodemailer, { Transporter } from 'nodemailer';
+import { logger } from '@/lib/logger';
 
 export interface EmailOptions {
   to: string;
@@ -34,7 +35,7 @@ export class EmailService {
     try {
       // Vérifier la configuration
       if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
-        console.error('Configuration SMTP manquante');
+        logger.error('Configuration SMTP manquante');
         return false;
       }
 
@@ -46,10 +47,10 @@ export class EmailService {
         html: options.html,
       });
 
-      console.log('Email envoyé:', info.messageId);
+      logger.network('Email', `Email envoyé: ${info.messageId}`);
       return true;
     } catch (error) {
-      console.error('Erreur envoi email:', error);
+      logger.error('Erreur envoi email: ' + error);
       return false;
     }
   }
@@ -60,10 +61,10 @@ export class EmailService {
   async testConnection(): Promise<boolean> {
     try {
       await this.transporter.verify();
-      console.log('Connexion SMTP OK');
+      logger.info('Connexion SMTP OK');
       return true;
     } catch (error) {
-      console.error('Erreur connexion SMTP:', error);
+      logger.error('Erreur connexion SMTP: ' + error);
       return false;
     }
   }

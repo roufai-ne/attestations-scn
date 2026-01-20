@@ -63,16 +63,9 @@ export async function POST(request: NextRequest) {
         const signatureImage = formData.get('signatureImage') as File;
         const texteSignature = formData.get('texteSignature') as string;
         const pin = formData.get('pin') as string;
-        const positionX = formData.get('positionX') as string;
-        const positionY = formData.get('positionY') as string;
-        const signatureWidth = formData.get('signatureWidth') as string;
-        const signatureHeight = formData.get('signatureHeight') as string;
-        const qrCodePositionX = formData.get('qrCodePositionX') as string;
-        const qrCodePositionY = formData.get('qrCodePositionY') as string;
-        const qrCodeSize = formData.get('qrCodeSize') as string;
 
-        // Validation
-        if (!signatureImage || !texteSignature || !pin) {
+        // Validation - les positions sont maintenant gérées par l'admin dans le template
+        if (!texteSignature || !pin) {
             return NextResponse.json(
                 { error: 'Données manquantes' },
                 { status: 400 }
@@ -87,30 +80,29 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Créer le dossier de signatures s'il n'existe pas
-        const signaturesDir = path.join(process.cwd(), 'public', 'uploads', 'signatures');
-        await mkdir(signaturesDir, { recursive: true });
+        // Gérer l'image de signature
+        let signatureImagePath: string | undefined;
 
-        // Sauvegarder l'image
-        const bytes = await signatureImage.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const filename = `signature-${session.user.id}-${Date.now()}.png`;
-        const filepath = path.join(signaturesDir, filename);
+        if (signatureImage && signatureImage.size > 0) {
+            // Créer le dossier de signatures s'il n'existe pas
+            const signaturesDir = path.join(process.cwd(), 'public', 'uploads', 'signatures');
+            await mkdir(signaturesDir, { recursive: true });
 
-        await writeFile(filepath, buffer);
+            // Sauvegarder l'image
+            const bytes = await signatureImage.arrayBuffer();
+            const buffer = Buffer.from(bytes);
+            const filename = `signature-${session.user.id}-${Date.now()}.png`;
+            const filepath = path.join(signaturesDir, filename);
 
-        // Créer/mettre à jour la configuration
+            await writeFile(filepath, buffer);
+            signatureImagePath = `/uploads/signatures/${filename}`;
+        }
+
+        // Créer/mettre à jour la configuration (sans les positions - gérées par le template)
         const config = await signatureService.createOrUpdateConfig(session.user.id, {
-            signatureImagePath: `/uploads/signatures/${filename}`,
+            signatureImagePath: signatureImagePath,
             texteSignature,
             pin,
-            positionX: positionX ? parseFloat(positionX) : undefined,
-            positionY: positionY ? parseFloat(positionY) : undefined,
-            signatureWidth: signatureWidth ? parseFloat(signatureWidth) : undefined,
-            signatureHeight: signatureHeight ? parseFloat(signatureHeight) : undefined,
-            qrCodePositionX: qrCodePositionX ? parseFloat(qrCodePositionX) : undefined,
-            qrCodePositionY: qrCodePositionY ? parseFloat(qrCodePositionY) : undefined,
-            qrCodeSize: qrCodeSize ? parseFloat(qrCodeSize) : undefined,
         });
 
         return NextResponse.json({

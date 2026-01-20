@@ -4,6 +4,7 @@
  */
 
 import twilio from 'twilio';
+import { logger } from '@/lib/logger';
 
 export interface SmsOptions {
   to: string;
@@ -36,7 +37,7 @@ class TwilioProvider implements ISmsProvider {
   async send(to: string, message: string): Promise<boolean> {
     try {
       if (!this.client) {
-        console.error('Configuration Twilio manquante');
+        logger.error('Configuration Twilio manquante');
         return false;
       }
 
@@ -49,10 +50,10 @@ class TwilioProvider implements ISmsProvider {
         to: formattedTo,
       });
 
-      console.log('SMS envoyé:', result.sid);
+      logger.network('SMS', `SMS envoyé: ${result.sid}`);
       return true;
     } catch (error) {
-      console.error('Erreur envoi SMS:', error);
+      logger.error('Erreur envoi SMS: ' + error);
       return false;
     }
   }
@@ -64,10 +65,10 @@ class TwilioProvider implements ISmsProvider {
       }
       // Vérifier le compte Twilio
       await this.client.api.accounts(process.env.TWILIO_ACCOUNT_SID).fetch();
-      console.log('Connexion Twilio OK');
+      logger.info('Connexion Twilio OK');
       return true;
     } catch (error) {
-      console.error('Erreur connexion Twilio:', error);
+      logger.error('Erreur connexion Twilio: ' + error);
       return false;
     }
   }
@@ -88,7 +89,7 @@ class GenericSmsProvider implements ISmsProvider {
   async send(to: string, message: string): Promise<boolean> {
     try {
       if (!this.apiUrl || !this.apiKey) {
-        console.error('Configuration SMS API manquante');
+        logger.error('Configuration SMS API manquante');
         return false;
       }
 
@@ -109,10 +110,10 @@ class GenericSmsProvider implements ISmsProvider {
         throw new Error(`API SMS error: ${response.statusText}`);
       }
 
-      console.log('SMS envoyé via API générique');
+      logger.network('SMS', 'SMS envoyé via API générique');
       return true;
     } catch (error) {
-      console.error('Erreur envoi SMS:', error);
+      logger.error('Erreur envoi SMS: ' + error);
       return false;
     }
   }
@@ -123,10 +124,10 @@ class GenericSmsProvider implements ISmsProvider {
         return false;
       }
       // Test de connexion basique
-      console.log('API SMS configurée');
+      logger.info('API SMS configurée');
       return true;
     } catch (error) {
-      console.error('Erreur test API SMS:', error);
+      logger.error('Erreur test API SMS: ' + error);
       return false;
     }
   }

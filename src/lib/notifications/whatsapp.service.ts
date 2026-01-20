@@ -3,6 +3,8 @@
  * Basé sur le Prompt 6.1 - Services de Notification
  */
 
+import { logger } from '@/lib/logger';
+
 export interface WhatsAppOptions {
   to: string;
   templateName: string;
@@ -29,7 +31,7 @@ export class WhatsAppService {
   async sendTemplate(options: WhatsAppOptions): Promise<boolean> {
     try {
       if (!this.phoneNumberId || !this.accessToken) {
-        console.error('Configuration WhatsApp manquante');
+        logger.error('Configuration WhatsApp manquante');
         return false;
       }
 
@@ -63,15 +65,15 @@ export class WhatsAppService {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Erreur WhatsApp API:', error);
+        logger.error('Erreur WhatsApp API: ' + JSON.stringify(error));
         return false;
       }
 
       const result = await response.json();
-      console.log('WhatsApp envoyé:', result.messages?.[0]?.id);
+      logger.network('WhatsApp', `WhatsApp envoyé: ${result.messages?.[0]?.id}`);
       return true;
     } catch (error) {
-      console.error('Erreur envoi WhatsApp:', error);
+      logger.error('Erreur envoi WhatsApp: ' + error);
       return false;
     }
   }
@@ -82,7 +84,7 @@ export class WhatsAppService {
   async sendText(to: string, message: string): Promise<boolean> {
     try {
       if (!this.phoneNumberId || !this.accessToken) {
-        console.error('Configuration WhatsApp manquante');
+        logger.error('Configuration WhatsApp manquante');
         return false;
       }
 
@@ -108,15 +110,15 @@ export class WhatsAppService {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Erreur WhatsApp API:', error);
+        logger.error('Erreur WhatsApp API: ' + JSON.stringify(error));
         return false;
       }
 
       const result = await response.json();
-      console.log('WhatsApp texte envoyé:', result.messages?.[0]?.id);
+      logger.network('WhatsApp', `WhatsApp texte envoyé: ${result.messages?.[0]?.id}`);
       return true;
     } catch (error) {
-      console.error('Erreur envoi WhatsApp:', error);
+      logger.error('Erreur envoi WhatsApp: ' + error);
       return false;
     }
   }
@@ -161,10 +163,10 @@ export class WhatsAppService {
         throw new Error('Invalid WhatsApp configuration');
       }
 
-      console.log('Connexion WhatsApp OK');
+      logger.info('Connexion WhatsApp OK');
       return true;
     } catch (error) {
-      console.error('Erreur connexion WhatsApp:', error);
+      logger.error('Erreur connexion WhatsApp: ' + error);
       return false;
     }
   }

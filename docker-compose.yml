@@ -1,48 +1,91 @@
-version: '3.8'
+# ============================================
+# Attestations SCN - Docker Compose Développement
+# ============================================
 
 services:
+  # Application Next.js
   app:
     container_name: attestations-app
     build:
       context: .
       dockerfile: Dockerfile
-    restart: always
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
+      - NODE_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/attestations_db
       - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=supersecretkey_change_me_in_prod
-      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_SECRET=dev_secret_key_change_in_prod
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - UPLOAD_DIR=/app/uploads
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       - uploads_data:/app/uploads
+      - attestations_data:/app/public/attestations
+      - arretes_data:/app/public/arretes
+    networks:
+      - attestations-network
 
+  # Base de données PostgreSQL
   db:
     container_name: attestations-db
     image: postgres:15-alpine
-    restart: always
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=attestations_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: attestations_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - attestations-network
 
+  # Redis pour les queues et le cache
   redis:
     container_name: attestations-redis
     image: redis:7-alpine
-    restart: always
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - attestations-network
+
+  # Adminer pour administration DB (dev seulement)
+  adminer:
+    container_name: attestations-adminer
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - attestations-network
 
 volumes:
   postgres_data:
   redis_data:
   uploads_data:
+  attestations_data:
+  arretes_data:
+
+
+networks:
+  attestations-network:
+    driver: bridge

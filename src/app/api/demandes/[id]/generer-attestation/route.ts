@@ -62,6 +62,7 @@ export async function POST(
             dateDebutService: demande.appele.dateDebutService,
             dateFinService: demande.appele.dateFinService,
             promotion: demande.appele.promotion,
+            lieuService: demande.appele.structure ?? undefined,
         });
 
         // Mettre à jour le statut de la demande à EN_ATTENTE_SIGNATURE

@@ -33,6 +33,29 @@ export interface TemplateConfig {
     pageHeight: number;
     pageOrientation: 'portrait' | 'landscape';
     fields: TemplateField[];
+
+    // Layout - Marges en mm
+    layout?: {
+        margeHaut: number;
+        margeBas: number;
+        margeGauche: number;
+        margeDroite: number;
+    };
+
+    // Position de la signature (en points PDF)
+    signaturePosition?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
+
+    // Position du QR Code (en points PDF)
+    qrCodePosition?: {
+        x: number;
+        y: number;
+        size: number;
+    };
 }
 
 // Champs disponibles par défaut
@@ -46,7 +69,6 @@ export const AVAILABLE_FIELDS: Omit<TemplateField, 'x' | 'y'>[] = [
         fontWeight: 'normal',
         color: '#000000',
         textAlign: 'left',
-        prefix: 'N° ',
     },
     {
         id: 'civilite',
@@ -78,7 +100,6 @@ export const AVAILABLE_FIELDS: Omit<TemplateField, 'x' | 'y'>[] = [
         color: '#000000',
         textAlign: 'left',
         format: 'dd MMMM yyyy',
-        prefix: 'Né(e) le ',
     },
     {
         id: 'lieuNaissance',
@@ -89,7 +110,6 @@ export const AVAILABLE_FIELDS: Omit<TemplateField, 'x' | 'y'>[] = [
         fontWeight: 'normal',
         color: '#000000',
         textAlign: 'left',
-        prefix: 'à ',
     },
     {
         id: 'diplome',
@@ -100,7 +120,6 @@ export const AVAILABLE_FIELDS: Omit<TemplateField, 'x' | 'y'>[] = [
         fontWeight: 'normal',
         color: '#000000',
         textAlign: 'left',
-        prefix: 'Titulaire d\'',
     },
     {
         id: 'lieuService',
@@ -111,7 +130,6 @@ export const AVAILABLE_FIELDS: Omit<TemplateField, 'x' | 'y'>[] = [
         fontWeight: 'normal',
         color: '#000000',
         textAlign: 'left',
-        prefix: 'A accompli avec assiduité le Service Civique National à/au ',
     },
     {
         id: 'dateDebutService',
@@ -123,7 +141,6 @@ export const AVAILABLE_FIELDS: Omit<TemplateField, 'x' | 'y'>[] = [
         color: '#000000',
         textAlign: 'left',
         format: 'dd/MM/yyyy',
-        prefix: 'Durant la période du ',
     },
     {
         id: 'dateFinService',
@@ -135,7 +152,6 @@ export const AVAILABLE_FIELDS: Omit<TemplateField, 'x' | 'y'>[] = [
         color: '#000000',
         textAlign: 'left',
         format: 'dd/MM/yyyy',
-        prefix: 'au ',
     },
     {
         id: 'dateSignature',
@@ -147,7 +163,6 @@ export const AVAILABLE_FIELDS: Omit<TemplateField, 'x' | 'y'>[] = [
         color: '#000000',
         textAlign: 'left',
         format: 'dd MMMM yyyy',
-        prefix: 'Niamey, le ',
     },
     {
         id: 'nomDirecteur',
@@ -158,6 +173,16 @@ export const AVAILABLE_FIELDS: Omit<TemplateField, 'x' | 'y'>[] = [
         fontWeight: 'bold',
         color: '#000000',
         textAlign: 'center',
+    },
+    {
+        id: 'promotion',
+        label: 'Promotion',
+        type: 'text',
+        fontSize: 12,
+        fontFamily: 'Helvetica',
+        fontWeight: 'normal',
+        color: '#000000',
+        textAlign: 'left',
     },
     {
         id: 'qrcode',

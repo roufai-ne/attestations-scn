@@ -3,6 +3,7 @@ import { Arrete, StatutIndexation } from '@prisma/client';
 import { addOCRJob } from './queue.service';
 import { unlink } from 'fs/promises';
 import path from 'path';
+import { logger } from '@/lib/logger';
 
 export interface CreateArreteInput {
     numero: string;
@@ -44,7 +45,7 @@ export class ArreteService {
         // Ajouter à la queue pour traitement OCR
         await addOCRJob(arrete.id, data.fichierPath);
 
-        console.log(`📄 Arrêté créé: ${arrete.numero} (ID: ${arrete.id})`);
+        logger.info(`Arrêté créé: ${arrete.numero} (ID: ${arrete.id})`);
 
         return arrete;
     }
@@ -142,9 +143,9 @@ export class ArreteService {
         // Supprimer le fichier PDF
         try {
             await unlink(arrete.fichierPath);
-            console.log(`🗑️ Fichier supprimé: ${arrete.fichierPath}`);
+            logger.debug(`Fichier supprimé: ${arrete.fichierPath}`);
         } catch (error) {
-            console.warn(`⚠️ Impossible de supprimer le fichier: ${arrete.fichierPath}`, error);
+            logger.warn(`Impossible de supprimer le fichier: ${arrete.fichierPath}`);
         }
 
         // Supprimer de la base de données
@@ -152,7 +153,7 @@ export class ArreteService {
             where: { id },
         });
 
-        console.log(`🗑️ Arrêté supprimé: ${arrete.numero}`);
+        logger.info(`Arrêté supprimé: ${arrete.numero}`);
     }
 
     /**
@@ -179,7 +180,7 @@ export class ArreteService {
         // Relancer le job OCR
         await addOCRJob(arrete.id, arrete.fichierPath);
 
-        console.log(`🔄 Réindexation lancée pour l'arrêté: ${arrete.numero}`);
+        logger.info(`Réindexation lancée pour l'arrêté: ${arrete.numero}`);
     }
 
     /**

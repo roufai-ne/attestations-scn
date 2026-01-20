@@ -28,6 +28,7 @@ import { UserPlus, Search, MoreVertical, Edit, Trash2, Key } from 'lucide-react'
 import { toast } from 'sonner';
 import { UserFormModal } from '@/components/admin/users/UserFormModal';
 import { Role } from '@prisma/client';
+import { useConfirm } from '@/components/shared/ConfirmProvider';
 
 interface User {
   id: string;
@@ -88,10 +89,18 @@ export default function UtilisateursPage() {
     setShowModal(true);
   };
 
+  const confirm = useConfirm();
+
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir désactiver cet utilisateur ?')) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Désactiver l\'utilisateur',
+      description: 'Êtes-vous sûr de vouloir désactiver cet utilisateur ? Il ne pourra plus se connecter.',
+      confirmText: 'Désactiver',
+      cancelText: 'Annuler',
+      variant: 'destructive',
+    });
+
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {

@@ -1,13 +1,10 @@
-// Charger les polyfills AVANT tout autre import
-import '../polyfills/promise-with-resolvers';
-import '../polyfills/dom-matrix';
-import '../polyfills/path2d';
-import '../polyfills/buffer-transfertofixedlength';
-import '../polyfills/image-data';
+// Service OCR pour extraction de texte depuis PDF
+// Note: Les polyfills ne sont plus nécessaires avec Node.js 20+
 
 import Tesseract from 'tesseract.js';
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { logger } from '@/lib/logger';
 
 // Pas d'import statique de pdfjs-dist - on le charge dynamiquement
 let pdfjsLib: any = null;
@@ -24,7 +21,7 @@ async function initializePdfjs() {
 
     // Import dynamique de pdfjs-dist APRÈS que le polyfill soit défini
     pdfjsLib = await import('pdfjs-dist');
-    
+
     // Configuration du worker pdfjs
     if (typeof window === 'undefined') {
         try {
@@ -33,10 +30,10 @@ async function initializePdfjs() {
             }
             pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerModule.default;
         } catch (error) {
-            console.warn('⚠️ Impossible de charger le worker pdfjs:', error);
+            logger.warn('Impossible de charger le worker pdfjs: ' + error);
         }
     }
-    
+
     isInitialized = true;
     return pdfjsLib;
 }
@@ -60,15 +57,15 @@ export class OCRService {
     async extractTextFromPDF(filePath: string): Promise<OCRResult> {
         // Initialiser pdfjs avec import dynamique
         const pdfjs = await initializePdfjs();
-        
+
         const startTime = Date.now();
 
         try {
-            console.log(`🔍 Début de l'extraction OCR pour: ${filePath}`);
+            logger.service('OCR', `Début de l'extraction pour: ${filePath}`);
 
             // Lire le fichier PDF
             const pdfBuffer = await readFile(filePath);
-            
+
             // Convertir Buffer en Uint8Array (requis par pdfjs-dist)
             const pdfData = new Uint8Array(pdfBuffer);
 
@@ -81,14 +78,14 @@ export class OCRService {
             const pdfDocument = await loadingTask.promise;
             const pageCount = pdfDocument.numPages;
 
-            console.log(`📄 PDF chargé: ${pageCount} page(s)`);
+            logger.info(`PDF chargé: ${pageCount} page(s)`);
 
             // Extraire le texte de chaque page
             const pageTexts: string[] = [];
             let totalConfidence = 0;
 
             for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-                console.log(`📖 Traitement de la page ${pageNum}/${pageCount}...`);
+                logger.debug(`Traitement de la page ${pageNum}/${pageCount}...`);
 
                 const page = await pdfDocument.getPage(pageNum);
 
@@ -100,7 +97,7 @@ export class OCRService {
                 const result = await Tesseract.recognize(canvas as any, 'fra', {
                     logger: (m) => {
                         if (m.status === 'recognizing text') {
-                            console.log(`  ⚙️ Page ${pageNum}: ${Math.round(m.progress * 100)}%`);
+                            logger.debug(`Page ${pageNum}: ${Math.round(m.progress * 100)}%`);
                         }
                     },
                 });
@@ -116,7 +113,7 @@ export class OCRService {
             const averageConfidence = totalConfidence / pageCount;
             const processingTime = Date.now() - startTime;
 
-            console.log(`✅ OCR terminé en ${processingTime}ms (confiance: ${averageConfidence.toFixed(2)}%)`);
+            logger.info(`OCR terminé en ${processingTime}ms (confiance: ${averageConfidence.toFixed(2)}%)`);
 
             return {
                 text: fullText,
@@ -126,7 +123,7 @@ export class OCRService {
             };
 
         } catch (error) {
-            console.error('❌ Erreur lors de l\'extraction OCR:', error);
+            logger.error('Erreur lors de l\'extraction OCR: ' + error);
             throw new Error(`Échec de l'extraction OCR: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
         }
     }

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import {
@@ -21,6 +22,7 @@ import {
     Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useConfirm } from '@/components/shared/ConfirmProvider';
 
 interface NavItem {
     title: string;
@@ -64,6 +66,12 @@ const navItems: NavItem[] = [
         roles: ['AGENT'],
     },
     {
+        title: 'Attestations',
+        href: '/agent/attestations',
+        icon: FileSignature,
+        roles: ['AGENT'],
+    },
+    {
         title: 'Dashboard',
         href: '/directeur/dashboard',
         icon: BarChart3,
@@ -76,7 +84,7 @@ const navItems: NavItem[] = [
         roles: ['DIRECTEUR'],
     },
     {
-        title: 'Configuration',
+        title: 'Ma Signature',
         href: '/directeur/profil/signature',
         icon: Settings,
         roles: ['DIRECTEUR'],
@@ -118,14 +126,14 @@ const navItems: NavItem[] = [
         roles: ['ADMIN'],
     },
     {
-        title: 'Config Attestation',
-        href: '/admin/configuration/attestation',
+        title: 'Templates Attestation',
+        href: '/admin/templates',
         icon: FileSignature,
         roles: ['ADMIN'],
     },
     {
-        title: 'Templates',
-        href: '/admin/templates',
+        title: 'Assets Site',
+        href: '/admin/configuration/assets',
         icon: FileText,
         roles: ['ADMIN'],
     },
@@ -136,6 +144,24 @@ export function Sidebar() {
     const { data: session } = useSession();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [logoUrl, setLogoUrl] = useState<string | null>(null);
+    const confirm = useConfirm();
+
+    useEffect(() => {
+        // Fetch logo
+        const fetchLogo = async () => {
+            try {
+                const response = await fetch('/api/admin/assets');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.logoUrl) setLogoUrl(data.logoUrl);
+                }
+            } catch (error) {
+                console.log('Using default logo');
+            }
+        };
+        fetchLogo();
+    }, []);
 
     if (!session) return null;
 
@@ -144,8 +170,14 @@ export function Sidebar() {
         (item) => !item.roles || item.roles.includes(userRole)
     );
 
-    const handleSignOut = () => {
-        if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+    const handleSignOut = async () => {
+        const confirmed = await confirm({
+            title: 'Déconnexion',
+            description: 'Êtes-vous sûr de vouloir vous déconnecter ?',
+            confirmText: 'Se déconnecter',
+            cancelText: 'Annuler',
+        });
+        if (confirmed) {
             signOut({ callbackUrl: '/login' });
         }
     };
@@ -164,23 +196,34 @@ export function Sidebar() {
             {/* Sidebar */}
             <aside
                 className={cn(
-                    'fixed left-0 top-0 z-40 h-screen bg-white border-r border-gray-200 transition-all duration-300 ease-in-out',
+                    'fixed left-0 top-0 z-40 h-screen bg-[var(--navy)] transition-all duration-300 ease-in-out shadow-xl',
                     collapsed ? 'w-20' : 'w-72',
                     mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
                 )}
             >
                 <div className="flex flex-col h-full">
                     {/* Header */}
-                    <div className="p-6 border-b border-gray-200">
+                    <div className="p-6 border-b border-white/10">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 min-w-0">
-                                <div className="p-2.5 bg-gradient-to-br from-green-600 to-orange-600 rounded-xl flex-shrink-0 shadow-lg">
-                                    <Shield className="h-6 w-6 text-white" />
-                                </div>
+                                {logoUrl ? (
+                                    <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-white flex-shrink-0">
+                                        <Image
+                                            src={logoUrl}
+                                            alt="Logo SCN"
+                                            fill
+                                            className="object-contain p-1"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="p-2 bg-[var(--accent-orange)] rounded-xl flex-shrink-0 shadow-lg">
+                                        <Shield className="h-6 w-6 text-white" />
+                                    </div>
+                                )}
                                 {!collapsed && (
                                     <div className="min-w-0">
-                                        <h1 className="font-bold text-lg text-gray-900 truncate">SCN</h1>
-                                        <p className="text-xs text-gray-500 truncate">Service Civique</p>
+                                        <h1 className="font-bold text-lg text-white truncate">SCN</h1>
+                                        <p className="text-xs text-white/60 truncate">Service Civique</p>
                                     </div>
                                 )}
                             </div>
@@ -189,17 +232,17 @@ export function Sidebar() {
 
                     {/* User info card */}
                     {!collapsed && (
-                        <div className="p-4 m-4 bg-gradient-to-br from-green-50 via-white to-orange-50 rounded-xl border border-green-100">
+                        <div className="p-4 m-4 bg-white/10 rounded-xl border border-white/10">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-white rounded-lg shadow-sm">
-                                    <User className="h-5 w-5 text-green-600" />
+                                <div className="p-2 bg-[var(--accent-orange)] rounded-lg shadow-sm">
+                                    <User className="h-5 w-5 text-white" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-gray-900 truncate">
+                                    <p className="text-sm font-semibold text-white truncate">
                                         {session.user.nom} {session.user.prenom}
                                     </p>
-                                    <p className="text-xs text-gray-600 truncate">{session.user.email}</p>
-                                    <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-green-600 text-white rounded-full">
+                                    <p className="text-xs text-white/60 truncate">{session.user.email}</p>
+                                    <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-[var(--accent-green)] text-white rounded-full">
                                         {userRole}
                                     </span>
                                 </div>
@@ -221,8 +264,8 @@ export function Sidebar() {
                                     className={cn(
                                         'group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
                                         isActive
-                                            ? 'bg-gradient-to-r from-green-600 to-orange-600 text-white shadow-lg shadow-green-500/30'
-                                            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900',
+                                            ? 'bg-[var(--accent-orange)] text-white shadow-lg'
+                                            : 'text-white/70 hover:bg-white/10 hover:text-white',
                                         collapsed && 'justify-center'
                                     )}
                                     title={collapsed ? item.title : undefined}
@@ -245,12 +288,12 @@ export function Sidebar() {
                     </nav>
 
                     {/* Footer section */}
-                    <div className="p-4 border-t border-gray-200 space-y-2">
+                    <div className="p-4 border-t border-white/10 space-y-2">
                         {/* Logout button */}
                         <button
                             onClick={handleSignOut}
                             className={cn(
-                                'group flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all duration-200 w-full',
+                                'group flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all duration-200 w-full',
                                 collapsed && 'justify-center'
                             )}
                             title={collapsed ? 'Déconnexion' : undefined}
@@ -262,11 +305,11 @@ export function Sidebar() {
                         {/* Collapse toggle (desktop only) */}
                         <button
                             onClick={() => setCollapsed(!collapsed)}
-                            className="hidden lg:flex items-center justify-center w-full px-4 py-3 rounded-xl hover:bg-gray-100 transition-colors"
+                            className="hidden lg:flex items-center justify-center w-full px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
                             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                         >
                             <ChevronLeft className={cn(
-                                'h-5 w-5 text-gray-600 transition-transform duration-300',
+                                'h-5 w-5 text-white/60 transition-transform duration-300',
                                 collapsed && 'rotate-180'
                             )} />
                         </button>
@@ -284,4 +327,3 @@ export function Sidebar() {
         </>
     );
 }
-

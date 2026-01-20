@@ -1,0 +1,40 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Build outputs
+.next
+out
+build
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test
+test-results
+playwright-report
+coverage
+
+# Misc
+*.md
+!README.md
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Temporary files
+tmp*
+*.log
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db

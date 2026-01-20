@@ -101,7 +101,17 @@ export default function DirecteurAttestationDetailPage({ params }: { params: Pro
                     </>
                 )}
                 {attestation.fichierPath && (
-                    <Button variant="outline">
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = `/api/attestations/${attestation.id}/download`;
+                            link.download = `attestation-${attestation.numero}.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }}
+                    >
                         <Download className="h-4 w-4 mr-2" />
                         Télécharger le PDF
                     </Button>

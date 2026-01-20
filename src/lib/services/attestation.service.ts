@@ -29,7 +29,6 @@ export interface AttestationData {
  */
 export class AttestationService {
     private readonly uploadDir = path.join(process.cwd(), 'public', 'uploads', 'attestations');
-    private readonly templatePath = path.join(process.cwd(), 'public', 'templates', 'attestation-template.pdf');
 
     /**
      * Génère un numéro d'attestation séquentiel
@@ -80,7 +79,7 @@ export class AttestationService {
     /**
      * Récupère la valeur d'un champ à partir des données
      */
-    private getFieldValue(data: AttestationData, field: TemplateField, numero: string): string {
+    private getFieldValue(data: AttestationData, field: TemplateField, numero: string, nomDirecteur?: string): string {
         const now = new Date();
 
         switch (field.id) {
@@ -105,7 +104,7 @@ export class AttestationService {
             case 'dateSignature':
                 return format(now, field.format || 'dd MMMM yyyy', { locale: fr });
             case 'nomDirecteur':
-                return 'Dr. DOUMA SOUMANA M.C';
+                return nomDirecteur || 'Le Directeur';
             case 'promotion':
                 return data.promotion;
             case 'numeroArrete':
@@ -253,65 +252,27 @@ export class AttestationService {
             // Cache des polices
             const fonts = new Map<string, PDFFont>();
 
+            // Récupérer le nom du directeur signataire
+            let nomDirecteur: string | undefined;
+            const directeurConfig = await prisma.directeurSignature.findFirst({
+                where: { isEnabled: true },
+                include: { user: { select: { nom: true, prenom: true } } },
+            });
+            if (directeurConfig?.user) {
+                nomDirecteur = `${directeurConfig.user.prenom} ${directeurConfig.user.nom}`;
+            }
+
             // Dessiner les champs configurés
             if (config && config.fields.length > 0) {
                 for (const field of config.fields) {
-                    if (field.type === 'qrcode') {
-                        // Générer et placer le QR Code
-                        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-                        const qrCodeBuffer = await qrcodeService.generateQRCodeBuffer(
-                            {
-                                id: data.demandeId,
-                                numero,
-                                nom: data.nom,
-                                prenom: data.prenom,
-                                dateNaissance: format(data.dateNaissance, 'yyyy-MM-dd'),
-                            },
-                            baseUrl
-                        );
-
-                        const qrImage = await pdfDoc.embedPng(qrCodeBuffer);
-                        const qrWidth = field.width || 80;
-                        const qrHeight = field.height || 80;
-                        const pageHeight = page.getHeight();
-
-                        page.drawImage(qrImage, {
-                            x: field.x,
-                            y: pageHeight - field.y - qrHeight,
-                            width: qrWidth,
-                            height: qrHeight,
-                        });
-                    } else if (field.type === 'signature') {
-                        // Charger la signature du directeur si configurée
-                        const signatureConfig = await prisma.directeurSignature.findFirst({
-                            where: { isEnabled: true },
-                        });
-
-                        if (signatureConfig?.signatureImage) {
-                            try {
-                                const sigPath = path.join(process.cwd(), 'public', signatureConfig.signatureImage);
-                                const sigBytes = await readFile(sigPath);
-                                const sigImage = signatureConfig.signatureImage.endsWith('.png')
-                                    ? await pdfDoc.embedPng(sigBytes)
-                                    : await pdfDoc.embedJpg(sigBytes);
-
-                                const sigWidth = field.width || 150;
-                                const sigHeight = field.height || 60;
-                                const pageHeight = page.getHeight();
-
-                                page.drawImage(sigImage, {
-                                    x: field.x,
-                                    y: pageHeight - field.y - sigHeight,
-                                    width: sigWidth,
-                                    height: sigHeight,
-                                });
-                            } catch (err) {
-                                console.warn('Erreur chargement signature:', err);
-                            }
-                        }
+                    // IMPORTANT: Le QR code et la signature ne sont PAS ajoutés ici
+                    // Ils seront ajoutés lors de la signature par le directeur (signature.service)
+                    // pour éviter la duplication
+                    if (field.type === 'qrcode' || field.type === 'signature') {
+                        continue; // Ignorer - géré par signatureService.applySignatureToPDF
                     } else {
                         // Champ texte ou date
-                        const value = this.getFieldValue(data, field, numero);
+                        const value = this.getFieldValue(data, field, numero, nomDirecteur);
                         await this.drawField(pdfDoc, page, field, value, fonts);
                     }
                 }
@@ -462,16 +423,22 @@ export class AttestationService {
         });
 
         // Créer l'enregistrement
+        const createData: Parameters<typeof prisma.attestation.create>[0]['data'] = {
+            numero,
+            demandeId,
+            fichierPath,
+            qrCodeData,
+            statut: StatutAttestation.GENEREE,
+            typeSignature: TypeSignature.ELECTRONIQUE,
+        };
+
+        // Ajouter le signataire uniquement si un directeur est trouvé
+        if (directeur) {
+            createData.signataireId = directeur.id;
+        }
+
         const attestation = await prisma.attestation.create({
-            data: {
-                numero,
-                demandeId,
-                fichierPath,
-                qrCodeData,
-                statut: StatutAttestation.GENEREE,
-                typeSignature: TypeSignature.ELECTRONIQUE,
-                signataire: directeur ? { connect: { id: directeur.id } } : undefined,
-            },
+            data: createData,
             include: {
                 demande: true,
             },
@@ -535,17 +502,34 @@ export class AttestationService {
             };
         }
 
-        // Vérifier la signature du QR Code
-        const isValidSignature = qrcodeService.verifySignature(
-            attestation.qrCodeData,
+        // Vérifier la signature du QR Code avec les paramètres fournis
+        // Récupérer les données stockées pour comparaison
+        const storedData = qrcodeService.parseAndValidateQRData(attestation.qrCodeData);
+
+        if (!storedData.valid || !storedData.data) {
+            return {
+                valid: false,
+                reason: 'Données QR Code corrompues',
+            };
+        }
+
+        // Valider avec la signature et le timestamp fournis dans l'URL
+        const qrValidation = qrcodeService.validateQRCode(
+            {
+                id: storedData.data.id,
+                numero: storedData.data.numero,
+                nom: storedData.data.nom,
+                prenom: storedData.data.prenom,
+                dateNaissance: storedData.data.dateNaissance,
+            },
             signature,
             timestamp
         );
 
-        if (!isValidSignature) {
+        if (!qrValidation.valid) {
             return {
                 valid: false,
-                reason: 'Signature QR Code invalide',
+                reason: qrValidation.reason || 'Signature QR Code invalide',
             };
         }
 
