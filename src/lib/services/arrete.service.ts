@@ -1,8 +1,5 @@
 import { prisma } from '../prisma';
 import { Arrete, StatutIndexation } from '@prisma/client';
-import { addOCRJob } from './queue.service';
-import { unlink } from 'fs/promises';
-import path from 'path';
 import { logger } from '@/lib/logger';
 
 export interface CreateArreteInput {
@@ -10,7 +7,9 @@ export interface CreateArreteInput {
     dateArrete: Date;
     promotion: string;
     annee: string;
-    fichierPath: string;
+    fichierPath?: string | null;
+    lieuService?: string;
+    statutIndexation?: StatutIndexation;
 }
 
 export interface SearchArreteResult {
@@ -29,7 +28,7 @@ export interface SearchArreteResult {
  */
 export class ArreteService {
     /**
-     * Crée un nouvel arrêté et lance l'indexation OCR
+     * Crée un nouvel arrêté (système Excel - sans OCR)
      */
     async createArrete(data: CreateArreteInput): Promise<Arrete> {
         // Créer l'arrêté dans la base de données
@@ -39,13 +38,11 @@ export class ArreteService {
                 dateArrete: data.dateArrete,
                 promotion: data.promotion,
                 annee: data.annee,
-                fichierPath: data.fichierPath,
-                statutIndexation: StatutIndexation.EN_ATTENTE,
+                fichierPath: data.fichierPath || null,
+                lieuService: data.lieuService || null,
+                statutIndexation: data.statutIndexation || StatutIndexation.INDEXED,
             },
         });
-
-        // Ajouter à la queue pour traitement OCR
-        await addOCRJob(arrete.id, data.fichierPath);
 
         logger.info(`Arrêté créé: ${arrete.numero} (ID: ${arrete.id})`);
 
@@ -135,6 +132,8 @@ export class ArreteService {
     /**
      * Supprime un arrêté et son fichier
      */
+    async deleteArrete(id
+     */
     async deleteArrete(id: string): Promise<void> {
         const arrete = await this.getArreteById(id);
 
@@ -142,89 +141,13 @@ export class ArreteService {
             throw new Error('Arrêté introuvable');
         }
 
-        // Supprimer le fichier PDF
-        try {
-            await unlink(arrete.fichierPath);
-            logger.debug(`Fichier supprimé: ${arrete.fichierPath}`);
-        } catch (error) {
-            logger.warn(`Impossible de supprimer le fichier: ${arrete.fichierPath}`);
-        }
-
-        // Supprimer de la base de données
-        await prisma.arrete.delete({
-            where: { id },
+        // Supprimer de la base de données (les appelés seront supprimés en cascade)
         });
 
         logger.info(`Arrêté supprimé: ${arrete.numero}`);
     }
 
-    /**
-     * Relance l'indexation OCR d'un arrêté
-     */
-    async reindexArrete(id: string): Promise<void> {
-        const arrete = await this.getArreteById(id);
 
-        if (!arrete) {
-            throw new Error('Arrêté introuvable');
-        }
-
-        // Réinitialiser le statut
-        await prisma.arrete.update({
-            where: { id },
-            data: {
-                statutIndexation: StatutIndexation.EN_ATTENTE,
-                contenuOCR: null,
-                messageErreur: null,
-                dateIndexation: null,
-            },
-        });
-
-        // Relancer le job OCR
-        await addOCRJob(arrete.id, arrete.fichierPath);
-
-        logger.info(`Réindexation lancée pour l'arrêté: ${arrete.numero}`);
-    }
-
-    /**
-     * Recherche dans le contenu OCR des arrêtés
-     * Utilise PostgreSQL full-text search
-     */
-    async searchInArretes(query: string, limit: number = 10): Promise<SearchArreteResult[]> {
-        if (!query || query.trim().length < 2) {
-            return [];
-        }
-
-        // Nettoyer et préparer la requête
-        // Utiliser <-> pour rechercher les mots adjacents (phrase)
-        // "MOUSSA Ibrahim" devient "MOUSSA <-> Ibrahim" pour chercher les mots consécutifs
-        const words = query.trim().split(/\s+/).filter(w => w.length >= 2);
-        const searchQuery = words.length > 1
-            ? words.join(' <-> ')  // Recherche de phrase (mots adjacents)
-            : words[0] + ':*';     // Recherche avec préfixe pour un seul mot
-
-        // Recherche full-text avec PostgreSQL
-        const results = await prisma.$queryRaw<SearchArreteResult[]>`
-      SELECT 
-        id,
-        numero,
-        "dateArrete",
-        promotion,
-        annee,
-        "fichierPath",
-        ts_headline('french', "contenuOCR", to_tsquery('french', ${searchQuery}), 
-          'MaxWords=60, MinWords=20, ShortWord=3, HighlightAll=true, MaxFragments=5, FragmentDelimiter= ... '
-        ) as excerpt,
-        ts_rank(to_tsvector('french', "contenuOCR"), to_tsquery('french', ${searchQuery})) as rank
-      FROM arretes
-      WHERE 
-        "statutIndexation" = 'INDEXE'
-        AND to_tsvector('french', "contenuOCR") @@ to_tsquery('french', ${searchQuery})
-      ORDER BY rank DESC
-      LIMIT ${limit}
-    `;
-
-        return results;
-    }
 
     /**
      * Obtient les statistiques d'indexation
