@@ -36,12 +36,14 @@ import {
     Loader2,
     Search,
     Edit,
+    Upload,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ArreteViewDialog } from './ArreteViewDialog';
 import { ArreteEditDialog } from './ArreteEditDialog';
 import { ArreteDeleteDialog } from './ArreteDeleteDialog';
+import { UploadAppeleDialog } from './UploadAppeleDialog';
 
 interface Arrete {
     id: string;
@@ -99,6 +101,15 @@ export function ArretesDataTable({ initialData = [] }: ArretesDataTableProps) {
         open: false,
         arrete: null,
     });
+    const [uploadDialog, setUploadDialog] = useState<{
+        open: boolean;
+        arreteId: string | null;
+        arreteNumero: string | null;
+    }>({
+        open: false,
+        arreteId: null,
+        arreteNumero: null,
+    });
 
     useEffect(() => {
         loadArretes();
@@ -126,32 +137,6 @@ export function ArretesDataTable({ initialData = [] }: ArretesDataTableProps) {
         }
     };
 
-    const handleReindex = async (id: string, numero: string) => {
-        try {
-            const response = await fetch(`/api/admin/arretes/${id}/reindex`, {
-                method: 'POST',
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                toast({
-                    title: 'Réindexation lancée',
-                    description: `L'arrêté ${numero} est en cours de réindexation`,
-                });
-                loadArretes();
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            toast({
-                title: 'Erreur',
-                description: error instanceof Error ? error.message : 'Erreur lors de la réindexation',
-                variant: 'destructive',
-            });
-        }
-    };
-
     const openViewDialog = (arreteId: string) => {
         setViewDialog({ open: true, arreteId });
     };
@@ -162,6 +147,10 @@ export function ArretesDataTable({ initialData = [] }: ArretesDataTableProps) {
 
     const openDeleteDialog = (arrete: Arrete) => {
         setDeleteDialog({ open: true, arrete: { id: arrete.id, numero: arrete.numero } });
+    };
+
+    const openUploadDialog = (arreteId: string, arreteNumero: string) => {
+        setUploadDialog({ open: true, arreteId, arreteNumero });
     };
 
     const handleDownload = (fichierPath: string, numero: string) => {
@@ -282,9 +271,9 @@ export function ArretesDataTable({ initialData = [] }: ArretesDataTableProps) {
                                                     <Download className="mr-2 h-4 w-4" />
                                                     Télécharger
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleReindex(arrete.id, arrete.numero)}>
-                                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                                    Réindexer
+                                                <DropdownMenuItem onClick={() => openUploadDialog(arrete.id, arrete.numero)}>
+                                                    <Upload className="mr-2 h-4 w-4" />
+                                                    Importer appelés (Excel)
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     onClick={() => openDeleteDialog(arrete)}
@@ -321,6 +310,14 @@ export function ArretesDataTable({ initialData = [] }: ArretesDataTableProps) {
                 open={deleteDialog.open}
                 onOpenChange={(open) => setDeleteDialog({ open, arrete: null })}
                 arrete={deleteDialog.arrete}
+                onSuccess={loadArretes}
+            />
+
+            <UploadAppeleDialog
+                open={uploadDialog.open}
+                onClose={() => setUploadDialog({ open: false, arreteId: null, arreteNumero: null })}
+                arreteId={uploadDialog.arreteId || ''}
+                arreteNumero={uploadDialog.arreteNumero || ''}
                 onSuccess={loadArretes}
             />
         </div>

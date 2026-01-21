@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileText, Calendar, Hash, GraduationCap, Loader2, Download } from 'lucide-react';
+import { Eye, FileText, Calendar, Hash, GraduationCap, Loader2, Download, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -36,11 +36,13 @@ const statutLabels: Record<string, string> = {
 
 export function ArreteViewDialog({ open, onOpenChange, arreteId }: ArreteViewDialogProps) {
   const [arrete, setArrete] = useState<any>(null);
+  const [appeles, setAppeles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (open && arreteId) {
       loadArrete();
+      loadAppeles();
     }
   }, [open, arreteId]);
 
@@ -58,6 +60,20 @@ export function ArreteViewDialog({ open, onOpenChange, arreteId }: ArreteViewDia
       console.error('Erreur chargement arrêté:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAppeles = async () => {
+    if (!arreteId) return;
+
+    try {
+      const response = await fetch(`/api/admin/arretes/${arreteId}/appeles`);
+      if (response.ok) {
+        const data = await response.json();
+        setAppeles(data.appeles || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement appelés:', error);
     }
   };
 
@@ -83,7 +99,7 @@ export function ArreteViewDialog({ open, onOpenChange, arreteId }: ArreteViewDia
             Détails de l'arrêté
           </DialogTitle>
           <DialogDescription>
-            Informations complètes et contenu OCR de l'arrêté
+            Informations complètes et liste des appelés
           </DialogDescription>
         </DialogHeader>
 
@@ -150,22 +166,49 @@ export function ArreteViewDialog({ open, onOpenChange, arreteId }: ArreteViewDia
             {/* Message d'erreur si présent */}
             {arrete.messageErreur && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-red-800">Erreur d'indexation:</p>
+                <p className="text-sm font-medium text-red-800">Erreur:</p>
                 <p className="text-sm text-red-600 mt-1">{arrete.messageErreur}</p>
               </div>
             )}
 
-            {/* Contenu OCR */}
-            {arrete.contenuOCR && (
+            {/* Nombre d'appelés */}
+            <div className="flex items-center gap-2 py-2 border-y">
+              <Users className="h-4 w-4 text-gray-400" />
+              <p className="text-sm font-medium">
+                {arrete.nombreAppeles > 0 
+                  ? `${arrete.nombreAppeles} appelé${arrete.nombreAppeles > 1 ? 's' : ''} enregistré${arrete.nombreAppeles > 1 ? 's' : ''}`
+                  : 'Aucun appelé enregistré'}
+              </p>
+            </div>
+
+            {/* Liste des appelés */}
+            {appeles.length > 0 && (
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText className="h-4 w-4 text-gray-400" />
-                  <p className="text-sm font-medium text-gray-700">Contenu OCR extrait:</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="h-4 w-4 text-gray-400" />
+                  <p className="text-sm font-medium text-gray-700">Liste des appelés:</p>
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-96 overflow-y-auto">
-                  <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono">
-                    {arrete.contenuOCR}
-                  </pre>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg max-h-96 overflow-y-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-100 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">N°</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Nom</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Prénoms</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Diplôme</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {appeles.map((appele, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-900">{appele.numero}</td>
+                          <td className="px-3 py-2 text-sm text-gray-900 font-medium">{appele.nom}</td>
+                          <td className="px-3 py-2 text-sm text-gray-600">{appele.prenoms || '-'}</td>
+                          <td className="px-3 py-2 text-sm text-gray-600">{appele.diplome || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
