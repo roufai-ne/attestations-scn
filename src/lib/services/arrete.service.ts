@@ -16,8 +16,10 @@ export interface CreateArreteInput {
 export interface SearchArreteResult {
     id: string;
     numero: string;
+    dateArrete: Date | string;
     promotion: string;
     annee: string;
+    fichierPath: string;
     excerpt: string;
     rank: number;
 }
@@ -193,7 +195,12 @@ export class ArreteService {
         }
 
         // Nettoyer et préparer la requête
-        const searchQuery = query.trim().replace(/\s+/g, ' & ');
+        // Utiliser <-> pour rechercher les mots adjacents (phrase)
+        // "MOUSSA Ibrahim" devient "MOUSSA <-> Ibrahim" pour chercher les mots consécutifs
+        const words = query.trim().split(/\s+/).filter(w => w.length >= 2);
+        const searchQuery = words.length > 1
+            ? words.join(' <-> ')  // Recherche de phrase (mots adjacents)
+            : words[0] + ':*';     // Recherche avec préfixe pour un seul mot
 
         // Recherche full-text avec PostgreSQL
         const results = await prisma.$queryRaw<SearchArreteResult[]>`
@@ -203,8 +210,9 @@ export class ArreteService {
         "dateArrete",
         promotion,
         annee,
+        "fichierPath",
         ts_headline('french', "contenuOCR", to_tsquery('french', ${searchQuery}), 
-          'MaxWords=50, MinWords=25, ShortWord=3, HighlightAll=false, MaxFragments=1'
+          'MaxWords=60, MinWords=20, ShortWord=3, HighlightAll=true, MaxFragments=5, FragmentDelimiter= ... '
         ) as excerpt,
         ts_rank(to_tsvector('french', "contenuOCR"), to_tsquery('french', ${searchQuery})) as rank
       FROM arretes

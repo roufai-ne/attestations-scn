@@ -14,6 +14,7 @@ interface SearchResult {
     dateArrete: Date | string;
     promotion: string;
     annee: string;
+    fichierPath: string;
     excerpt: string;
 }
 
@@ -74,8 +75,8 @@ export function ArreteSearchInput({ value, onChange, onSelect }: ArreteSearchInp
     const handleSelect = (result: SearchResult) => {
         setQuery('');
         setShowResults(false);
-        const dateStr = result.dateArrete instanceof Date 
-            ? result.dateArrete.toISOString().split('T')[0] 
+        const dateStr = result.dateArrete instanceof Date
+            ? result.dateArrete.toISOString().split('T')[0]
             : new Date(result.dateArrete).toISOString().split('T')[0];
         onChange?.(result.numero, dateStr);
         onSelect?.(result);
@@ -84,7 +85,7 @@ export function ArreteSearchInput({ value, onChange, onSelect }: ArreteSearchInp
     const handleViewPDF = (result: SearchResult, e: React.MouseEvent) => {
         e.stopPropagation();
         // Ouvrir le PDF dans un nouvel onglet
-        window.open(`/uploads/arretes/${result.id}.pdf`, '_blank');
+        window.open(result.fichierPath, '_blank');
     };
 
     return (
@@ -111,41 +112,64 @@ export function ArreteSearchInput({ value, onChange, onSelect }: ArreteSearchInp
 
                 {/* Résultats de recherche */}
                 {showResults && results.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-96 overflow-y-auto">
-                        {results.map((result) => (
-                            <div
-                                key={result.id}
-                                className="p-4 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 transition-colors"
-                                onClick={() => handleSelect(result)}
-                            >
-                                <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <FileText className="h-4 w-4 text-primary flex-shrink-0" />
-                                            <span className="font-medium text-sm">{result.numero}</span>
-                                            <Badge variant="secondary" className="text-xs">
-                                                {result.promotion}
-                                            </Badge>
-                                            <span className="text-xs text-gray-500">
-                                                {new Date(result.dateArrete).toLocaleDateString('fr-FR')}
-                                            </span>
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-[400px] overflow-y-auto">
+                        <div className="p-3 border-b bg-gray-50 sticky top-0">
+                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                {results.length} résultat(s) trouvé(s)
+                            </span>
+                        </div>
+                        <div className="divide-y divide-gray-100">
+                            {results.map((result) => (
+                                <div
+                                    key={result.id}
+                                    className="p-4 hover:bg-blue-50 cursor-pointer transition-colors group"
+                                    onClick={() => handleSelect(result)}
+                                >
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1 min-w-0 space-y-2">
+                                            {/* Ligne 1: Icône + Numéro + Badge promotion */}
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-[var(--accent-orange)]/10 rounded-lg flex-shrink-0">
+                                                    <FileText className="h-4 w-4 text-[var(--accent-orange)]" />
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="font-semibold text-[var(--navy)]">
+                                                        {result.numero}
+                                                    </span>
+                                                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                                                        {result.promotion}
+                                                    </Badge>
+                                                    <span className="text-sm text-gray-500">
+                                                        {new Date(result.dateArrete).toLocaleDateString('fr-FR', {
+                                                            day: '2-digit',
+                                                            month: 'long',
+                                                            year: 'numeric'
+                                                        })}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Ligne 2: Excerpt avec highlight */}
+                                            <div
+                                                className="text-sm text-gray-600 pl-11 leading-relaxed bg-gray-50 p-2 rounded-lg border-l-2 border-[var(--accent-orange)]"
+                                                dangerouslySetInnerHTML={{ __html: result.excerpt }}
+                                            />
                                         </div>
-                                        <div
-                                            className="text-sm text-gray-600 line-clamp-2"
-                                            dangerouslySetInnerHTML={{ __html: result.excerpt }}
-                                        />
+
+                                        {/* Bouton voir PDF */}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={(e) => handleViewPDF(result, e)}
+                                            className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <ExternalLink className="h-4 w-4 mr-1" />
+                                            PDF
+                                        </Button>
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) => handleViewPDF(result, e)}
-                                        className="flex-shrink-0"
-                                    >
-                                        <ExternalLink className="h-4 w-4" />
-                                    </Button>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 )}
 

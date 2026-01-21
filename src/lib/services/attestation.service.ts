@@ -32,10 +32,13 @@ export class AttestationService {
 
     /**
      * Génère un numéro d'attestation séquentiel
-     * Format: ATT-AAAA-XXXXX
+     * Format: XXXXX/MM/AAAA (ex: 00001/01/2026)
+     * Le compteur est remis à zéro chaque année
      */
     async generateNumero(): Promise<string> {
-        const currentYear = new Date().getFullYear();
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
 
         // Utiliser une transaction pour éviter les doublons
         const result = await prisma.$transaction(async (tx) => {
@@ -71,8 +74,8 @@ export class AttestationService {
             return counter;
         });
 
-        // Formater le numéro: ATT-2026-00001
-        const numero = `ATT-${currentYear}-${result.counter.toString().padStart(5, '0')}`;
+        // Formater le numéro: 00001/01/2026
+        const numero = `${result.counter.toString().padStart(5, '0')}/${currentMonth}/${currentYear}`;
         return numero;
     }
 
