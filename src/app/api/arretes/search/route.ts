@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { arreteService } from '@/lib/services/arrete.service';
+import { appeleRechercheService } from '@/lib/services/appele-recherche.service';
 
 /**
  * GET /api/arretes/search
- * Recherche dans le contenu OCR des arrêtés
+ * Recherche dans les appelés de tous les arrêtés
  * Accessible aux agents de saisie, agents et admins
  */
 export async function GET(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
         const searchParams = request.nextUrl.searchParams;
         const query = searchParams.get('q');
-        const limit = parseInt(searchParams.get('limit') || '10');
+        const limit = parseInt(searchParams.get('limit') || '50');
 
         if (!query || query.trim().length < 2) {
             return NextResponse.json({
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        const results = await arreteService.searchInArretes(query, limit);
+        const results = await appeleRechercheService.searchAppeles(query, limit);
 
         return NextResponse.json({
             results,
