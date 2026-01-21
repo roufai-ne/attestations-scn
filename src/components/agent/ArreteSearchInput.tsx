@@ -10,12 +10,17 @@ import { useDebounce } from '@/hooks/use-debounce';
 
 interface SearchResult {
     id: string;
-    numero: string;
-    dateArrete: Date | string;
-    promotion: string;
-    annee: string;
-    fichierPath: string;
-    excerpt: string;
+    numero: number;
+    nom: string;
+    prenoms: string;
+    arrete: {
+        id: string;
+        numero: string;
+        dateArrete: Date | string | null;
+        promotion: string;
+        annee: string;
+        lieuService: string | null;
+    };
 }
 
 interface ArreteSearchInputProps {
@@ -75,17 +80,28 @@ export function ArreteSearchInput({ value, onChange, onSelect }: ArreteSearchInp
     const handleSelect = (result: SearchResult) => {
         setQuery('');
         setShowResults(false);
-        const dateStr = result.dateArrete instanceof Date
-            ? result.dateArrete.toISOString().split('T')[0]
-            : new Date(result.dateArrete).toISOString().split('T')[0];
-        onChange?.(result.numero, dateStr);
+        
+        // Gérer la date de l'arrêté
+        let dateStr = '';
+        if (result.arrete.dateArrete) {
+            try {
+                dateStr = result.arrete.dateArrete instanceof Date
+                    ? result.arrete.dateArrete.toISOString().split('T')[0]
+                    : new Date(result.arrete.dateArrete).toISOString().split('T')[0];
+            } catch {
+                console.warn('Date invalide pour l\'arrêté:', result.arrete.numero);
+            }
+        }
+        
+        onChange?.(result.arrete.numero, dateStr);
         onSelect?.(result);
     };
 
     const handleViewPDF = (result: SearchResult, e: React.MouseEvent) => {
         e.stopPropagation();
-        // Ouvrir le PDF dans un nouvel onglet
-        window.open(result.fichierPath, '_blank');
+        // TODO: Implémenter la vue de l'arrêté avec la liste des appelés
+        // Pour l'instant, on pourrait rediriger vers la page de l'arrêté
+        window.location.href = `/admin/arretes?id=${result.arrete.id}`;
     };
 
     return (
@@ -127,36 +143,48 @@ export function ArreteSearchInput({ value, onChange, onSelect }: ArreteSearchInp
                                 >
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex-1 min-w-0 space-y-2">
-                                            {/* Ligne 1: Icône + Numéro + Badge promotion */}
+                                            {/* Ligne 1: Nom de l'appelé */}
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2 bg-[var(--accent-orange)]/10 rounded-lg flex-shrink-0">
                                                     <FileText className="h-4 w-4 text-[var(--accent-orange)]" />
                                                 </div>
-                                                <div className="flex flex-wrap items-center gap-2">
+                                                <div className="flex-1">
                                                     <span className="font-semibold text-[var(--navy)]">
-                                                        {result.numero}
+                                                        {result.nom} {result.prenoms}
                                                     </span>
-                                                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                                                        {result.promotion}
-                                                    </Badge>
-                                                    <span className="text-sm text-gray-500">
-                                                        {new Date(result.dateArrete).toLocaleDateString('fr-FR', {
-                                                            day: '2-digit',
-                                                            month: 'long',
-                                                            year: 'numeric'
-                                                        })}
+                                                    <span className="text-sm text-gray-500 ml-2">
+                                                        (N° {result.numero})
                                                     </span>
                                                 </div>
                                             </div>
 
-                                            {/* Ligne 2: Excerpt avec highlight */}
-                                            <div
-                                                className="text-sm text-gray-600 pl-11 leading-relaxed bg-gray-50 p-2 rounded-lg border-l-2 border-[var(--accent-orange)]"
-                                                dangerouslySetInnerHTML={{ __html: result.excerpt }}
-                                            />
+                                            {/* Ligne 2: Infos arrêté */}
+                                            <div className="text-sm text-gray-600 pl-11 space-y-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="font-medium">Arrêté:</span>
+                                                    <span>{result.arrete.numero}</span>
+                                                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                                                        {result.arrete.promotion}
+                                                    </Badge>
+                                                    {result.arrete.dateArrete && (
+                                                        <span className="text-gray-500">
+                                                            {new Date(result.arrete.dateArrete).toLocaleDateString('fr-FR', {
+                                                                day: '2-digit',
+                                                                month: 'short',
+                                                                year: 'numeric'
+                                                            })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {result.arrete.lieuService && (
+                                                    <div className="text-gray-500">
+                                                        📍 {result.arrete.lieuService}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
-                                        {/* Bouton voir PDF */}
+                                        {/* Bouton voir détails */}
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -164,7 +192,7 @@ export function ArreteSearchInput({ value, onChange, onSelect }: ArreteSearchInp
                                             className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                         >
                                             <ExternalLink className="h-4 w-4 mr-1" />
-                                            PDF
+                                            Détails
                                         </Button>
                                     </div>
                                 </div>

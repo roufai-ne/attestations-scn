@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        const results = await appeleRechercheService.searchAppeles(query, limit);
+        const results = await appeleRechercheService.rechercheRapide(query, limit);
 
         return NextResponse.json({
             results,
