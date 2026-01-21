@@ -207,18 +207,46 @@ model Arrete {
   dateArrete        DateTime
   promotion         String
   annee             String
-  fichierPath       String
+  fichierPath       String?
+  lieuService       String?
   contenuOCR        String?           @db.Text
   statutIndexation  StatutIndexation  @default(EN_ATTENTE)
+  nombreAppeles     Int               @default(0)
   messageErreur     String?           @db.Text
   createdAt         DateTime          @default(now())
   dateIndexation    DateTime?
+
+  // Relations
+  appeles           AppeleArrete[]
 
   @@index([numero])
   @@index([promotion])
   @@index([annee])
   @@index([statutIndexation])
   @@map("arretes")
+}
+
+// 5. APPELÉS DANS LES ARRÊTÉS
+// Table de liaison pour stocker les appelés extraits des arrêtés Excel
+model AppeleArrete {
+  id                String   @id @default(cuid())
+  numero            Int      // Numéro dans l'arrêté
+  nom               String
+  prenoms           String?
+  dateNaissance     DateTime?
+  lieuNaissance     String?
+  diplome           String?
+  lieuService       String?  // Lieu de service de l'appelé
+  
+  // Relation avec l'arrêté
+  arreteId          String
+  arrete            Arrete   @relation(fields: [arreteId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+
+  @@index([arreteId])
+  @@index([nom])
+  @@map("appeles_arretes")
 }
 
 // 6. ATTESTATIONS

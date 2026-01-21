@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/admin/arretes
- * Upload et création d'un nouvel arrêté
+ * Création d'un nouvel arrêté (sans fichier - système Excel)
  */
 export async function POST(request: NextRequest) {
     try {
@@ -73,27 +73,13 @@ export async function POST(request: NextRequest) {
 
         // Parser le form data
         const formData = await request.formData();
-        const file = formData.get('file') as File;
         const numero = formData.get('numero') as string;
         const dateArrete = formData.get('dateArrete') as string;
         const promotion = formData.get('promotion') as string;
         const annee = formData.get('annee') as string;
+        const lieuService = formData.get('lieuService') as string | null;
 
         // Validation
-        if (!file) {
-            return NextResponse.json(
-                { error: 'Fichier PDF requis' },
-                { status: 400 }
-            );
-        }
-
-        if (!file.name.toLowerCase().endsWith('.pdf')) {
-            return NextResponse.json(
-                { error: 'Seuls les fichiers PDF sont acceptés' },
-                { status: 400 }
-            );
-        }
-
         const validatedData = createArreteSchema.parse({
             numero,
             dateArrete,
@@ -101,34 +87,19 @@ export async function POST(request: NextRequest) {
             annee,
         });
 
-        // Créer le dossier d'upload s'il n'existe pas
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'arretes');
-        await mkdir(uploadDir, { recursive: true });
-
-        // Générer un nom de fichier unique
-        const timestamp = Date.now();
-        const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const filename = `${timestamp}_${sanitizedFilename}`;
-        const filePath = path.join(uploadDir, filename);
-
-        // Sauvegarder le fichier
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        await writeFile(filePath, buffer);
-
-        console.log(`📁 Fichier sauvegardé: ${filePath}`);
-
-        // Créer l'arrêté dans la base de données et lancer l'OCR
+        // Créer l'arrêté dans la base de données (système Excel - pas de fichier PDF)
         const arrete = await arreteService.createArrete({
             ...validatedData,
-            fichierPath: filePath,
+            lieuService: lieuService || undefined,
+            fichierPath: null, // Pas de PDF, les appelés seront importés via Excel
+            statutIndexation: 'INDEXED' as any, // Marqué comme indexé car pas besoin d'OCR
         });
 
         return NextResponse.json(
             {
                 success: true,
                 arrete,
-                message: 'Arrêté créé avec succès. L\'indexation OCR est en cours.',
+                message: 'Arrêté créé avec succès. Vous pouvez maintenant importer les appelés depuis Excel.',
             },
             { status: 201 }
         );
