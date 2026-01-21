@@ -286,7 +286,9 @@ export class AttestationService {
 
             // Sauvegarder le PDF
             const pdfBytes = await pdfDoc.save();
-            const filename = `${numero}.pdf`;
+            // Remplacer les / par des - pour éviter les problèmes de chemin
+            const safeNumero = numero.replace(/\//g, '-');
+            const filename = `${safeNumero}.pdf`;
             const fichierPath = path.join(this.uploadDir, filename);
 
             await writeFile(fichierPath, pdfBytes);
