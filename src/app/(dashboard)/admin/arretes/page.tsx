@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -8,6 +9,7 @@ import { FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 export default function ArretesPage() {
+  
   const [stats, setStats] = useState<any>(null);
   const [arretes, setArretes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

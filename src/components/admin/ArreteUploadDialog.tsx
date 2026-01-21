@@ -241,12 +241,12 @@ export function ArreteUploadDialog({ open, onOpenChange }: ArreteUploadDialogPro
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Informations de l'arrêté */}
                         <div className="space-y-4">
-                            <h3 className="font-semibold text-sm">Informations de l'arrêté</h3>
+                            <h3 className="font-semibold text-sm">Informations de l&apos;arrêté</h3>
                             
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="numero">
-                                        Numéro de l'arrêté <span className="text-red-500">*</span>
+                                        Numéro de l&apos;arrêté <span className="text-red-500">*</span>
                                     </Label>
                                     <Input
                                         id="numero"
@@ -260,7 +260,7 @@ export function ArreteUploadDialog({ open, onOpenChange }: ArreteUploadDialogPro
 
                                 <div className="space-y-2">
                                     <Label htmlFor="dateArrete">
-                                        Date de l'arrêté <span className="text-red-500">*</span>
+                                        Date de l&apos;arrêté <span className="text-red-500">*</span>
                                     </Label>
                                     <Input
                                         id="dateArrete"

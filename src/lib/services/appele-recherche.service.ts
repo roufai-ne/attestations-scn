@@ -24,6 +24,7 @@ export type AppeleRechercheResult = Prisma.AppeleArreteGetPayload<{
 export class AppeleRechercheService {
     /**
      * Recherche rapide par nom/prénoms
+     * Recherche flexible: chaque terme peut être dans le nom OU les prénoms
      */
     async rechercheRapide(query: string, limit: number = 10): Promise<AppeleRechercheResult[]> {
         if (!query || query.trim().length < 2) {
@@ -32,65 +33,27 @@ export class AppeleRechercheService {
 
         const terms = query.trim().toLowerCase().split(/\s+/);
         
-        // Si 2 mots ou plus, on suppose: nom + prénom(s)
-        if (terms.length >= 2) {
-            const [nom, ...prenoms] = terms;
-            
-            // Recherche exacte sur nom et prénom
-            return await prisma.appeleArrete.findMany({
-                where: {
-                    AND: [
-                        {
-                            nom: {
-                                contains: nom,
-                                mode: 'insensitive',
-                            },
-                        },
-                        {
-                            prenoms: {
-                                contains: prenoms.join(' '),
-                                mode: 'insensitive',
-                            },
-                        },
-                    ],
-                },
-                include: {
-                    arrete: {
-                        select: {
-                            id: true,
-                            numero: true,
-                            dateArrete: true,
-                            promotion: true,
-                            annee: true,
-                            lieuService: true,
-                        },
+        // Construire les conditions: chaque terme doit être trouvé dans nom OU prénoms
+        const conditions = terms.map(term => ({
+            OR: [
+                {
+                    nom: {
+                        contains: term,
+                        mode: 'insensitive' as const,
                     },
                 },
-                take: limit,
-                orderBy: [
-                    { nom: 'asc' },
-                    { prenoms: 'asc' },
-                ],
-            });
-        }
-        
-        // Un seul mot: recherche dans nom OU prénoms
+                {
+                    prenoms: {
+                        contains: term,
+                        mode: 'insensitive' as const,
+                    },
+                },
+            ],
+        }));
+
         return await prisma.appeleArrete.findMany({
             where: {
-                OR: [
-                    {
-                        nom: {
-                            contains: terms[0],
-                            mode: 'insensitive',
-                        },
-                    },
-                    {
-                        prenoms: {
-                            contains: terms[0],
-                            mode: 'insensitive',
-                        },
-                    },
-                ],
+                AND: conditions,
             },
             include: {
                 arrete: {
