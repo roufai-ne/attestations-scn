@@ -130,9 +130,7 @@ export class ArreteService {
     }
 
     /**
-     * Supprime un arrêté et son fichier
-     */
-    async deleteArrete(id
+     * Supprime un arrêté
      */
     async deleteArrete(id: string): Promise<void> {
         const arrete = await this.getArreteById(id);
@@ -142,6 +140,8 @@ export class ArreteService {
         }
 
         // Supprimer de la base de données (les appelés seront supprimés en cascade)
+        await prisma.arrete.delete({
+            where: { id },
         });
 
         logger.info(`Arrêté supprimé: ${arrete.numero}`);
