@@ -12,7 +12,10 @@ interface SearchResult {
     id: string;
     numero: number;
     nom: string;
-    prenoms: string;
+    prenoms: string | null;
+    dateNaissance: Date | string | null;
+    lieuNaissance: string | null;
+    diplome: string | null;
     arrete: {
         id: string;
         numero: string;
@@ -135,68 +138,68 @@ export function ArreteSearchInput({ value, onChange, onSelect }: ArreteSearchInp
                             </span>
                         </div>
                         <div className="divide-y divide-gray-100">
-                            {results.map((result) => (
-                                <div
-                                    key={result.id}
-                                    className="p-4 hover:bg-blue-50 cursor-pointer transition-colors group"
-                                    onClick={() => handleSelect(result)}
-                                >
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex-1 min-w-0 space-y-2">
-                                            {/* Ligne 1: Nom de l'appelé */}
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-[var(--accent-orange)]/10 rounded-lg flex-shrink-0">
-                                                    <FileText className="h-4 w-4 text-[var(--accent-orange)]" />
+                            {results.map((result) => {
+                                const dateNaissanceStr = result.dateNaissance 
+                                    ? new Date(result.dateNaissance).toLocaleDateString('fr-FR', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric'
+                                    })
+                                    : null;
+                                
+                                return (
+                                    <div
+                                        key={result.id}
+                                        className="p-3 hover:bg-blue-50 cursor-pointer transition-colors group"
+                                        onClick={() => handleSelect(result)}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                {/* Ligne 1: Identité complète */}
+                                                <div className="flex items-start gap-2 mb-1.5">
+                                                    <FileText className="h-4 w-4 text-[var(--accent-orange)] mt-0.5 flex-shrink-0" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-semibold text-[var(--navy)] text-sm">
+                                                            {result.nom} {result.prenoms}
+                                                        </div>
+                                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-600 mt-0.5">
+                                                            {dateNaissanceStr && (
+                                                                <span>📅 {dateNaissanceStr}</span>
+                                                            )}
+                                                            {result.lieuNaissance && (
+                                                                <span>📍 {result.lieuNaissance}</span>
+                                                            )}
+                                                            {result.diplome && (
+                                                                <span className="text-gray-500">🎓 {result.diplome}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex-1">
-                                                    <span className="font-semibold text-[var(--navy)]">
-                                                        {result.nom} {result.prenoms}
-                                                    </span>
-                                                    <span className="text-sm text-gray-500 ml-2">
-                                                        (N° {result.numero})
-                                                    </span>
-                                                </div>
-                                            </div>
 
-                                            {/* Ligne 2: Infos arrêté */}
-                                            <div className="text-sm text-gray-600 pl-11 space-y-1">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="font-medium">Arrêté:</span>
-                                                    <span>{result.arrete.numero}</span>
-                                                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                                                {/* Ligne 2: Infos arrêté (compact) */}
+                                                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 ml-6">
+                                                    <span className="font-medium text-gray-700">Arrêté {result.arrete.numero}</span>
+                                                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-xs py-0 px-1.5">
                                                         {result.arrete.promotion}
                                                     </Badge>
-                                                    {result.arrete.dateArrete && (
-                                                        <span className="text-gray-500">
-                                                            {new Date(result.arrete.dateArrete).toLocaleDateString('fr-FR', {
-                                                                day: '2-digit',
-                                                                month: 'short',
-                                                                year: 'numeric'
-                                                            })}
-                                                        </span>
-                                                    )}
+                                                    <span className="text-gray-400">•</span>
+                                                    <span>N° {result.numero}</span>
                                                 </div>
-                                                {result.arrete.lieuService && (
-                                                    <div className="text-gray-500">
-                                                        📍 {result.arrete.lieuService}
-                                                    </div>
-                                                )}
                                             </div>
-                                        </div>
 
-                                        {/* Bouton voir détails */}
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={(e) => handleViewPDF(result, e)}
-                                            className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <ExternalLink className="h-4 w-4 mr-1" />
-                                            Détails
-                                        </Button>
+                                            {/* Bouton voir détails (plus petit) */}
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={(e) => handleViewPDF(result, e)}
+                                                className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-7 px-2"
+                                            >
+                                                <ExternalLink className="h-3 w-3" />
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}
