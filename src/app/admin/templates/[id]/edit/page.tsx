@@ -163,7 +163,17 @@ export default function TemplateEditorPage() {
             // Ne pas interférer avec les inputs
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-            const moveStep = e.shiftKey ? 10 : (snapToGrid ? gridSize : 1);
+            // Ctrl+flèche = mouvement précis 1px
+            // Shift+flèche = mouvement large 10px
+            // Flèche seule = mouvement moyen (grille ou 5px)
+            let moveStep: number;
+            if (e.ctrlKey || e.metaKey) {
+                moveStep = 1; // Mouvement précis
+            } else if (e.shiftKey) {
+                moveStep = 10; // Mouvement large
+            } else {
+                moveStep = snapToGrid ? gridSize : 5; // Mouvement normal
+            }
 
             switch (e.key) {
                 case 'ArrowUp':
