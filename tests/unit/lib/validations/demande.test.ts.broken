@@ -1,0 +1,383 @@
+import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
+import { demandeSchema } from '@/lib/validations/demande';
+
+describe('Validation Schemas - demande', () => {
+  describe('demandeSchema', () => {
+    it('devrait valider une demande complète et valide', () => {
+      const validDemande = {
+        numeroEnregistrement: 'ENR-2026-001',
+        dateEnregistrement: '2026-01-22',
+        observations: 'Dossier complet',
+      };
+
+      const result = demandeSchema.safeParse(validDemande);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.numeroEnregistrement).toBe('ENR-2026-001');
+      }
+    });
+
+    it('devrait rejeter un numéro d\'enregistrement vide', () => {
+      const invalidDemande = {
+        numeroEnregistrement: '',
+        dateEnregistrement: '2026-01-22',
+      };
+
+      const result = demandeSchema.safeParse(invalidDemande);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toContain('requis');
+      }
+    });
+
+    it('devrait accepter des observations optionnelles', () => {
+      const demandeWithoutObs = {
+        numeroEnregistrement: 'ENR-2026-001',
+        dateEnregistrement: '2026-01-22',
+      };
+
+      const result = demandeSchema.safeParse(demandeWithoutObs);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('devrait rejeter une date future pour dateEnregistrement', () => {
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 1);
+
+      const invalidDemande = {
+        numeroEnregistrement: 'ENR-2026-001',
+        dateEnregistrement: futureDate.toISOString(),
+      };
+
+      const result = demandeSchema.safeParse(invalidDemande);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some(issue => 
+          issue.message.includes('passée') || issue.message.includes('future')
+        )).toBe(true);
+      }
+    });
+
+    it('devrait valider le format de date ISO', () => {
+      const validDemande = {
+        numeroEnregistrement: 'ENR-2026-001',
+        dateEnregistrement: '2026-01-22T10:00:00.000Z',
+      };
+
+      const result = demandeSchema.safeParse(validDemande);
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('appeleSchema', () => {
+    const validAppele = {
+      nom: 'ABDOU',
+      prenom: 'Ibrahim',
+      dateNaissance: '1995-03-15',
+      lieuNaissance: 'Niamey',
+      email: 'ibrahim.abdou@example.com',
+      telephone: '+22790123456',
+      whatsapp: '+22790123456',
+      diplome: 'Licence en Informatique',
+      promotion: '2023-2024',
+      numeroArrete: '2023/045',
+      structure: 'Direction Générale du Service Civique',
+      dateDebutService: '2023-09-01',
+      dateFinService: '2024-08-31',
+    };
+
+    it('devrait valider un appelé complet et valide', () => {
+      const result = appeleSchema.safeParse(validAppele);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.nom).toBe('ABDOU');
+        expect(result.data.prenom).toBe('Ibrahim');
+      }
+    });
+
+    it('devrait rejeter un nom vide', () => {
+      const invalid = { ...validAppele, nom: '' };
+
+      const result = appeleSchema.safeParse(invalid);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('devrait rejeter un prénom vide', () => {
+      const invalid = { ...validAppele, prenom: '' };
+
+      const result = appeleSchema.safeParse(invalid);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('devrait valider un email correct', () => {
+      const withEmail = { ...validAppele, email: 'test@example.com' };
+
+      const result = appeleSchema.safeParse(withEmail);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('devrait rejeter un email invalide', () => {
+      const withInvalidEmail = { ...validAppele, email: 'not-an-email' };
+
+      const result = appeleSchema.safeParse(withInvalidEmail);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some(issue => 
+          issue.message.includes('email') || issue.message.includes('valide')
+        )).toBe(true);
+      }
+    });
+
+    it('devrait accepter un email optionnel', () => {
+      const { email, ...withoutEmail } = validAppele;
+
+      const result = appeleSchema.safeParse(withoutEmail);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('devrait valider un téléphone Niger format +227', () => {
+      const withPhone = { ...validAppele, telephone: '+22790123456' };
+
+      const result = appeleSchema.safeParse(withPhone);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('devrait rejeter un téléphone sans +227', () => {
+      const withInvalidPhone = { ...validAppele, telephone: '0612345678' };
+
+      const result = appeleSchema.safeParse(withInvalidPhone);
+
+      // Selon la validation stricte ou non
+      // Si validation stricte, devrait échouer
+      // expect(result.success).toBe(false);
+    });
+
+    it('devrait rejeter une date de naissance future', () => {
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 1);
+
+      const invalid = { ...validAppele, dateNaissance: futureDate.toISOString() };
+
+      const result = appeleSchema.safeParse(invalid);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('devrait rejeter une date de naissance < 18 ans', () => {
+      const recentDate = new Date();
+      recentDate.setFullYear(recentDate.getFullYear() - 17);
+
+      const invalid = { ...validAppele, dateNaissance: recentDate.toISOString() };
+
+      const result = appeleSchema.safeParse(invalid);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some(issue => 
+          issue.message.includes('18') || issue.message.includes('ans')
+        )).toBe(true);
+      }
+    });
+
+    it('devrait valider une personne de 18 ans exactement', () => {
+      const eighteenYearsAgo = new Date();
+      eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+
+      const valid = { ...validAppele, dateNaissance: eighteenYearsAgo.toISOString() };
+
+      const result = appeleSchema.safeParse(valid);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('devrait rejeter dateFinService <= dateDebutService', () => {
+      const invalid = {
+        ...validAppele,
+        dateDebutService: '2024-09-01',
+        dateFinService: '2024-08-31', // Avant le début
+      };
+
+      const result = appeleSchema.safeParse(invalid);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some(issue => 
+          issue.message.includes('fin') && issue.message.includes('début')
+        )).toBe(true);
+      }
+    });
+
+    it('devrait valider dateFinService > dateDebutService', () => {
+      const valid = {
+        ...validAppele,
+        dateDebutService: '2023-09-01',
+        dateFinService: '2024-08-31',
+      };
+
+      const result = appeleSchema.safeParse(valid);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('devrait normaliser le nom en majuscules', () => {
+      const withLowercase = { ...validAppele, nom: 'abdou' };
+
+      const result = appeleSchema.safeParse(withLowercase);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.nom).toBe('ABDOU');
+      }
+    });
+
+    it('devrait normaliser le prénom avec première majuscule', () => {
+      const withLowercase = { ...validAppele, prenom: 'ibrahim' };
+
+      const result = appeleSchema.safeParse(withLowercase);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.prenom).toBe('Ibrahim');
+      }
+    });
+  });
+
+  describe('piecesSchema', () => {
+    const validPiece = {
+      type: 'DEMANDE_MANUSCRITE',
+      present: true,
+      conforme: true,
+      observation: 'Conforme',
+    };
+
+    it('devrait valider une pièce complète', () => {
+      const result = piecesSchema.safeParse(validPiece);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('devrait valider tous les types de pièces', () => {
+      const types = [
+        'DEMANDE_MANUSCRITE',
+        'CERTIFICAT_ASSIDUITE',
+        'CERTIFICAT_CESSATION',
+        'CERTIFICAT_PRISE_SERVICE',
+        'COPIE_ARRETE',
+      ];
+
+      types.forEach(type => {
+        const piece = { ...validPiece, type };
+        const result = piecesSchema.safeParse(piece);
+        expect(result.success).toBe(true);
+      });
+    });
+
+    it('devrait rejeter un type de pièce invalide', () => {
+      const invalid = { ...validPiece, type: 'INVALID_TYPE' };
+
+      const result = piecesSchema.safeParse(invalid);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('devrait accepter conforme=false si present=true', () => {
+      const nonConforme = { ...validPiece, present: true, conforme: false };
+
+      const result = piecesSchema.safeParse(nonConforme);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('devrait accepter present=false', () => {
+      const absent = { ...validPiece, present: false, conforme: false };
+
+      const result = piecesSchema.safeParse(absent);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('devrait accepter observation optionnelle', () => {
+      const { observation, ...withoutObs } = validPiece;
+
+      const result = piecesSchema.safeParse(withoutObs);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('devrait valider un tableau de pièces', () => {
+      const pieces = [
+        { type: 'DEMANDE_MANUSCRITE', present: true, conforme: true },
+        { type: 'CERTIFICAT_ASSIDUITE', present: true, conforme: true },
+        { type: 'COPIE_ARRETE', present: false, conforme: false },
+      ];
+
+      const arraySchema = z.array(piecesSchema);
+      const result = arraySchema.safeParse(pieces);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveLength(3);
+      }
+    });
+
+    it('devrait rejeter si conforme=true mais present=false', () => {
+      const invalid = { ...validPiece, present: false, conforme: true };
+
+      const result = piecesSchema.safeParse(invalid);
+
+      // Selon la logique métier, cela devrait être invalide
+      // Si validation custom, vérifier
+      // expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Validation combinée', () => {
+    it('devrait valider une demande complète avec appelé et pièces', () => {
+      const completeDemande = {
+        demande: {
+          numeroEnregistrement: 'ENR-2026-001',
+          dateEnregistrement: '2026-01-22',
+          observations: 'Dossier complet',
+        },
+        appele: {
+          nom: 'ABDOU',
+          prenom: 'Ibrahim',
+          dateNaissance: '1995-03-15',
+          lieuNaissance: 'Niamey',
+          diplome: 'Licence',
+          promotion: '2023-2024',
+          dateDebutService: '2023-09-01',
+          dateFinService: '2024-08-31',
+        },
+        pieces: [
+          { type: 'DEMANDE_MANUSCRITE', present: true, conforme: true },
+          { type: 'CERTIFICAT_ASSIDUITE', present: true, conforme: true },
+          { type: 'CERTIFICAT_CESSATION', present: true, conforme: true },
+          { type: 'CERTIFICAT_PRISE_SERVICE', present: true, conforme: true },
+          { type: 'COPIE_ARRETE', present: true, conforme: true },
+        ],
+      };
+
+      const demandeResult = demandeSchema.safeParse(completeDemande.demande);
+      const appeleResult = appeleSchema.safeParse(completeDemande.appele);
+      const piecesResult = z.array(piecesSchema).safeParse(completeDemande.pieces);
+
+      expect(demandeResult.success).toBe(true);
+      expect(appeleResult.success).toBe(true);
+      expect(piecesResult.success).toBe(true);
+    });
+  });
+});

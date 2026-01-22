@@ -71,6 +71,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 # Copier le fichier de langue OCR
 COPY --from=builder --chown=nextjs:nodejs /app/fra.traineddata ./fra.traineddata
 
+# Copier script d'entrypoint pour migrations
+COPY --chown=nextjs:nodejs docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Utiliser l'utilisateur non-root
 USER nextjs
 
@@ -85,5 +89,6 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-# Commande de démarrage
+# Commande de démarrage avec entrypoint pour migrations
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "server.js"]

@@ -17,6 +17,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/attestations_db
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=dev_secret_key_change_in_prod
+      - REDIS_URL=redis://redis:6379
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - UPLOAD_DIR=/app/uploads

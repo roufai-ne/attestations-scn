@@ -2,16 +2,95 @@ import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
+// Routes API publiques (ne nécessitent pas d'authentification)
+const PUBLIC_API_ROUTES = [
+    "/api/auth",
+    "/api/health",
+    "/api/verifier",
+]
+
+// Mapping des routes API par rôle
+const API_ROLE_ROUTES: Record<string, string[]> = {
+    ADMIN: ["/api/admin"],
+    DIRECTEUR: ["/api/directeur"],
+    AGENT: ["/api/agent", "/api/demandes", "/api/attestations"],
+    SAISIE: ["/api/saisie", "/api/demandes", "/api/arretes/search"],
+}
+
 export default auth((req) => {
     const { nextUrl } = req
+    const isLoggedIn = !!req.auth
+    const userRole = req.auth?.user?.role
 
-    // Skip API routes completely
+    // ==========================================
+    // Protection des routes API
+    // ==========================================
     if (nextUrl.pathname.startsWith("/api")) {
+        // Routes API publiques
+        const isPublicApi = PUBLIC_API_ROUTES.some(route =>
+            nextUrl.pathname.startsWith(route)
+        )
+        if (isPublicApi) {
+            return NextResponse.next()
+        }
+
+        // Vérifier l'authentification pour les routes API protégées
+        if (!isLoggedIn) {
+            return NextResponse.json(
+                { error: "Non authentifié" },
+                { status: 401 }
+            )
+        }
+
+        // Vérifier les permissions par rôle pour les routes API
+        const isAdminRoute = nextUrl.pathname.startsWith("/api/admin")
+        const isDirecteurRoute = nextUrl.pathname.startsWith("/api/directeur")
+        const isAgentRoute = nextUrl.pathname.startsWith("/api/agent")
+        const isSaisieRoute = nextUrl.pathname.startsWith("/api/saisie")
+
+        // Admin a accès à tout
+        if (userRole === "ADMIN") {
+            return NextResponse.next()
+        }
+
+        // Routes admin - réservées aux admins
+        if (isAdminRoute) {
+            return NextResponse.json(
+                { error: "Accès refusé" },
+                { status: 403 }
+            )
+        }
+
+        // Routes directeur
+        if (isDirecteurRoute && userRole !== "DIRECTEUR") {
+            return NextResponse.json(
+                { error: "Accès refusé" },
+                { status: 403 }
+            )
+        }
+
+        // Routes agent
+        if (isAgentRoute && userRole !== "AGENT") {
+            return NextResponse.json(
+                { error: "Accès refusé" },
+                { status: 403 }
+            )
+        }
+
+        // Routes saisie
+        if (isSaisieRoute && userRole !== "SAISIE") {
+            return NextResponse.json(
+                { error: "Accès refusé" },
+                { status: 403 }
+            )
+        }
+
         return NextResponse.next()
     }
 
-    const isLoggedIn = !!req.auth
-
+    // ==========================================
+    // Protection des pages (routes non-API)
+    // ==========================================
     const isPublicPath =
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/verifier") ||
@@ -31,10 +110,9 @@ export default auth((req) => {
         return NextResponse.redirect(loginUrl)
     }
 
-    // Vérifier les permissions par rôle
+    // Vérifier les permissions par rôle pour les pages
     if (isLoggedIn && req.auth?.user) {
         const { pathname } = nextUrl
-        const userRole = req.auth.user.role
 
         // Routes agent de saisie
         if (pathname.startsWith("/saisie")) {
@@ -71,12 +149,12 @@ export default auth((req) => {
 export const config = {
     matcher: [
         /*
-         * Match all request paths except for the ones starting with:
-         * - api (API routes)
+         * Match all request paths except for:
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
+         * - Static assets (images, etc.)
          */
-        "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+        "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
     ],
 }

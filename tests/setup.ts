@@ -42,6 +42,7 @@ vi.mock('@/lib/prisma', () => ({
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
     demande: {
       findUnique: vi.fn(),
@@ -49,6 +50,7 @@ vi.mock('@/lib/prisma', () => ({
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
       count: vi.fn(),
     },
     arrete: {
@@ -57,6 +59,7 @@ vi.mock('@/lib/prisma', () => ({
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
       count: vi.fn(),
     },
     attestation: {
@@ -65,7 +68,33 @@ vi.mock('@/lib/prisma', () => ({
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
       count: vi.fn(),
+    },
+    template: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    pieceDossier: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    appele: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
     auditLog: {
       create: vi.fn(),
@@ -82,6 +111,38 @@ vi.mock('@/lib/prisma', () => ({
     })),
   },
 }))
+
+// Mock crypto
+vi.mock('crypto', async () => {
+  const actual = await vi.importActual('crypto')
+  return {
+    ...actual,
+    default: actual,
+  }
+})
+
+// Mock fs/promises  
+vi.mock('fs/promises', async () => {
+  const actual = await vi.importActual('fs/promises')
+  return {
+    ...actual,
+    default: actual,
+  }
+})
+
+// Mock next-auth core
+vi.mock('next-auth', () => {
+  const mockAuth = vi.fn(() => ({
+    handlers: { GET: vi.fn(), POST: vi.fn() },
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    auth: vi.fn(),
+  }))
+  return {
+    default: mockAuth,
+    ...mockAuth(),
+  }
+})
 
 // Mock Redis
 vi.mock('@/lib/redis.config', () => ({

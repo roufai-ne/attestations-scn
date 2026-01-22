@@ -103,13 +103,13 @@ export async function PATCH(
         }
 
         // Si on passe à un statut avant attestation et qu'une attestation existe, la supprimer
-        const statutsAvantAttestation = [
+        const statutsAvantAttestation = new Set<StatutDemande>([
             StatutDemande.ENREGISTREE,
             StatutDemande.EN_TRAITEMENT,
             StatutDemande.VALIDEE,
             StatutDemande.REJETEE
-        ]
-        if (statutsAvantAttestation.includes(statut) && demande.attestation) {
+        ]);
+        if (statutsAvantAttestation.has(statut) && demande.attestation) {
             // Supprimer l'attestation
             await prisma.attestation.delete({
                 where: { id: demande.attestation.id },

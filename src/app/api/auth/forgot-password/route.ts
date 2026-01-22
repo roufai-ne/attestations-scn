@@ -5,9 +5,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { emailService } from '@/lib/notifications/email.service';
+import { rateLimit } from '@/lib/rate-limit';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
+    // Rate limiting strict pour éviter le spam d'emails
+    const rateLimitResult = await rateLimit(request, 'auth');
+    if (!rateLimitResult.success) {
+        return rateLimitResult.response;
+    }
+
     try {
         const body = await request.json();
         const { email } = body;
@@ -26,8 +33,8 @@ export async function POST(request: NextRequest) {
 
         // Ne pas révéler si l'utilisateur existe ou non
         if (!user) {
-            // Simuler un délai pour éviter le timing attack
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            // Simuler un délai pour éviter le timing attack - augmenté à 1.5s
+            await new Promise((resolve) => setTimeout(resolve, 1500));
             return NextResponse.json({
                 success: true,
                 message: 'Si un compte existe, un email a été envoyé',

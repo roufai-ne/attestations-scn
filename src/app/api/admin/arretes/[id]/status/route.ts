@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getOCRJobStatus } from '@/lib/services/queue.service';
 import { prisma } from '@/lib/prisma';
 
 /**
  * GET /api/admin/arretes/[id]/status
- * Récupère le statut d'indexation OCR en temps réel
+ * Récupère le statut d'indexation d'un arrêté
+ * Note: La logique OCR a été remplacée par l'import Excel
  */
 export async function GET(
   request: NextRequest,
@@ -23,7 +23,7 @@ export async function GET(
 
     const { id: arreteId } = await params;
 
-    // Récupérer l'arrêté depuis la BDD pour avoir son statut actuel
+    // Récupérer l'arrêté depuis la BDD
     const arrete = await prisma.arrete.findUnique({
       where: { id: arreteId },
       select: {
@@ -32,6 +32,9 @@ export async function GET(
         statutIndexation: true,
         messageErreur: true,
         dateIndexation: true,
+        _count: {
+          select: { appeles: true }
+        }
       },
     });
 
@@ -42,49 +45,36 @@ export async function GET(
       );
     }
 
-    // Si le statut de la BDD est final, retourner directement
-    if (arrete.statutIndexation === 'INDEXE') {
-      return NextResponse.json({
-        id: arreteId,
-        state: 'completed',
-        progress: 100,
-        statutIndexation: arrete.statutIndexation,
-        dateIndexation: arrete.dateIndexation,
-      });
+    // Déterminer l'état en fonction du statut DB
+    let state = 'waiting';
+    let progress = 0;
+
+    switch (arrete.statutIndexation) {
+      case 'INDEXE':
+        state = 'completed';
+        progress = 100;
+        break;
+      case 'EN_COURS':
+        state = 'active';
+        progress = 50;
+        break;
+      case 'ERREUR':
+        state = 'failed';
+        progress = 0;
+        break;
+      default:
+        state = 'waiting';
+        progress = 0;
     }
 
-    if (arrete.statutIndexation === 'ERREUR') {
-      return NextResponse.json({
-        id: arreteId,
-        state: 'failed',
-        progress: 0,
-        statutIndexation: arrete.statutIndexation,
-        failedReason: arrete.messageErreur || 'Erreur inconnue',
-      });
-    }
-
-    // Essayer de récupérer le statut du job dans la queue
-    let jobStatus = null;
-    try {
-      jobStatus = await getOCRJobStatus(arreteId);
-    } catch (queueError) {
-      console.warn('Queue Redis non disponible, utilisation du statut BDD uniquement');
-    }
-
-    // Si pas de job dans la queue mais statut EN_ATTENTE ou EN_COURS
-    if (!jobStatus) {
-      return NextResponse.json({
-        id: arreteId,
-        state: arrete.statutIndexation === 'EN_COURS' ? 'active' : 'waiting',
-        progress: arrete.statutIndexation === 'EN_COURS' ? 10 : 0,
-        statutIndexation: arrete.statutIndexation,
-      });
-    }
-
-    // Retourner le statut du job
     return NextResponse.json({
-      ...jobStatus,
+      id: arreteId,
+      state,
+      progress,
       statutIndexation: arrete.statutIndexation,
+      dateIndexation: arrete.dateIndexation,
+      nombreAppeles: arrete._count.appeles,
+      failedReason: arrete.statutIndexation === 'ERREUR' ? arrete.messageErreur : undefined,
     });
 
   } catch (error) {
@@ -95,3 +85,4 @@ export async function GET(
     );
   }
 }
+

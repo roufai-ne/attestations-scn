@@ -4,10 +4,11 @@ import { signatureService } from '@/lib/services/signature.service';
 import { TypeNotification } from '@/lib/notifications/templates';
 import { CanalNotification } from '@prisma/client';
 import { withRateLimit, errorResponse, isDirecteurOrAdmin } from '@/lib/api-utils';
+import { twoFactorService } from '@/lib/security/two-factor.service';
 
 /**
  * POST /api/directeur/attestations/[id]/signer
- * Signe une attestation
+ * Signe une attestation avec vérification 2FA
  */
 export async function POST(
     request: NextRequest,
@@ -24,10 +25,29 @@ export async function POST(
         const { id } = await params;
 
         const body = await request.json();
-        const { pin } = body;
+        const { pin, twoFactorToken } = body;
 
         if (!pin) {
             return errorResponse('PIN manquant', 400);
+        }
+
+        // Vérifier si 2FA est requis
+        const is2FARequired = await twoFactorService.is2FARequired(session.user.id);
+        
+        if (is2FARequired) {
+            // Vérifier le token 2FA
+            if (!twoFactorToken) {
+                return errorResponse('Code 2FA requis. Demandez un code via /api/directeur/2fa/request-otp avec action=SIGN_ATTESTATION', 403);
+            }
+
+            const tokenVerification = twoFactorService.verifySessionToken(
+                twoFactorToken,
+                'SIGN_ATTESTATION'
+            );
+
+            if (!tokenVerification.valid || tokenVerification.userId !== session.user.id) {
+                return errorResponse('Code 2FA invalide ou expiré', 403);
+            }
         }
 
         // Signer l'attestation

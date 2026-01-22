@@ -304,6 +304,13 @@ model DirecteurSignature {
   pinAttempts     Int      @default(0)
   pinBloqueJusqua DateTime?
   isEnabled       Boolean  @default(false)
+  
+  // 2FA Configuration
+  twoFactorMethod String   @default("email") // "email" ou "totp"
+  totpSecret      String?  // Secret TOTP (chiffré)
+  totpEnabled     Boolean  @default(false)
+  totpBackupCodes String?  // Codes de backup (JSON array chiffré)
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

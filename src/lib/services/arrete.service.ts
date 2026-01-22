@@ -40,7 +40,7 @@ export class ArreteService {
                 annee: data.annee,
                 fichierPath: data.fichierPath || null,
                 lieuService: data.lieuService || null,
-                statutIndexation: data.statutIndexation || StatutIndexation.INDEXED,
+                statutIndexation: data.statutIndexation || StatutIndexation.INDEXE,
             },
         });
 

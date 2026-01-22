@@ -11,7 +11,7 @@ import path from 'path';
  */
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     let tempFilePath: string | null = null;
 
@@ -25,7 +25,7 @@ export async function POST(
             );
         }
 
-        const arreteId = params.id;
+        const { id: arreteId } = await params;
 
         // Vérifier que l'arrêté existe
         const arrete = await prisma.arrete.findUnique({
@@ -69,7 +69,7 @@ export async function POST(
         // Sauvegarder temporairement le fichier
         const buffer = Buffer.from(await file.arrayBuffer());
         tempFilePath = path.join(process.cwd(), 'public', 'uploads', 'temp', `preview-${Date.now()}-${file.name}`);
-        
+
         await writeFile(tempFilePath, buffer);
 
         // Analyser le fichier

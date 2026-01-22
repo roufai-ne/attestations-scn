@@ -141,9 +141,18 @@ export const CACHE_KEYS = {
   STATS_DASHBOARD: 'stats:dashboard',
   STATS_ADMIN: 'stats:admin',
 
-  // Utilisateurs
-  USER_BY_ID: (id: string) => `user:${id}`,
+  // Utilisateurs - sanitize ID to prevent injection
+  USER_BY_ID: (id: string) => `user:${sanitizeCacheKey(id)}`,
 } as const;
+
+/**
+ * Sanitize une valeur pour une clé Redis
+ * Empêche les injections via caractères spéciaux
+ */
+function sanitizeCacheKey(value: string): string {
+  // N'autorise que les caractères alphanumériques, tirets et underscores
+  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+}
 
 /**
  * Durées de cache prédéfinies (en secondes)

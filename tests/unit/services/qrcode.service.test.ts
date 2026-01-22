@@ -3,13 +3,23 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 // Mock du module crypto pour les tests
 vi.mock('crypto', async () => {
   const actual = await vi.importActual<typeof import('crypto')>('crypto')
+  
+  const mockCreateHmac = vi.fn(() => ({
+    update: vi.fn().mockReturnThis(),
+    digest: vi.fn().mockReturnValue('mock-signature-hex'),
+  }))
+  
+  const mockTimingSafeEqual = vi.fn((a, b) => a.toString('hex') === b.toString('hex'))
+  
   return {
+    default: {
+      ...actual,
+      createHmac: mockCreateHmac,
+      timingSafeEqual: mockTimingSafeEqual,
+    },
     ...actual,
-    createHmac: vi.fn(() => ({
-      update: vi.fn().mockReturnThis(),
-      digest: vi.fn().mockReturnValue('mock-signature-hex'),
-    })),
-    timingSafeEqual: vi.fn((a, b) => a.toString('hex') === b.toString('hex')),
+    createHmac: mockCreateHmac,
+    timingSafeEqual: mockTimingSafeEqual,
   }
 })
 

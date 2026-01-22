@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { StatutIndexation, Prisma } from '@prisma/client';
-import { pdfTextExtractor } from '@/lib/services/pdf-text-extractor.service';
-import path from 'path';
+import { StatutIndexation } from '@prisma/client';
 
 /**
  * POST /api/admin/arretes/reindex-all
- * Ré-indexe tous les arrêtés ou ceux en erreur
+ * Marque tous les arrêtés pour vérification
+ * Note: La logique OCR a été remplacée par l'import Excel
  */
 export async function POST(request: NextRequest) {
     try {
@@ -23,122 +22,78 @@ export async function POST(request: NextRequest) {
         const body = await request.json().catch(() => ({}));
         const { onlyErrors = false } = body;
 
-        // Récupérer les arrêtés à ré-indexer
-        const whereClause: Prisma.ArreteWhereInput = onlyErrors
+        // Compter les arrêtés concernés
+        const whereClause = onlyErrors
             ? { statutIndexation: StatutIndexation.ERREUR }
-            : {}; // Tous les arrêtés
+            : {};
 
+        const count = await prisma.arrete.count({
+            where: whereClause,
+        });
+
+        if (count === 0) {
+            return NextResponse.json({
+                success: true,
+                message: 'Aucun arrêté à traiter',
+                processed: 0,
+            });
+        }
+
+        // Pour la nouvelle logique basée sur Excel, on récupère les stats des arrêtés
         const arretes = await prisma.arrete.findMany({
             where: whereClause,
             select: {
                 id: true,
                 numero: true,
-                fichierPath: true,
                 statutIndexation: true,
+                _count: {
+                    select: { appeles: true }
+                }
             },
         });
 
-        if (arretes.length === 0) {
-            return NextResponse.json({
-                success: true,
-                message: 'Aucun arrêté à ré-indexer',
-                processed: 0,
-                errors: 0,
-            });
-        }
-
-        // Traitement en background (ne pas bloquer la réponse)
+        // Mettre à jour le statut des arrêtés qui ont des appelés
         const results = {
             total: arretes.length,
-            successCount: 0,
-            errorCount: 0,
-            details: [] as { id: string; numero: string; status: 'success' | 'error'; error?: string }[],
+            indexed: 0,
+            pending: 0,
         };
 
-        // Traiter chaque arrêté
         for (const arrete of arretes) {
-            try {
-                // Mettre le statut à EN_COURS
-                await prisma.arrete.update({
-                    where: { id: arrete.id },
-                    data: { statutIndexation: StatutIndexation.EN_COURS },
-                });
-
-                // Construire le chemin absolu du fichier
-                const absolutePath = path.join(process.cwd(), 'public', arrete.fichierPath);
-
-                // Extraction de texte du PDF
-                const extractResult = await pdfTextExtractor.extractText(absolutePath);
-
-                if (extractResult.hasText) {
-                    // Mettre à jour avec le contenu extrait
-                    await prisma.arrete.update({
-                        where: { id: arrete.id },
-                        data: {
-                            contenuOCR: pdfTextExtractor.cleanText(extractResult.text),
-                            statutIndexation: StatutIndexation.INDEXE,
-                            dateIndexation: new Date(),
-                        },
-                    });
-
-                    results.successCount++;
-                    results.details.push({
-                        id: arrete.id,
-                        numero: arrete.numero,
-                        status: 'success',
-                    });
-                } else {
-                    // PDF sans texte extractible
-                    await prisma.arrete.update({
-                        where: { id: arrete.id },
-                        data: {
-                            statutIndexation: StatutIndexation.ERREUR,
-                            messageErreur: 'PDF scanné - texte non extractible',
-                        },
-                    });
-
-                    results.errorCount++;
-                    results.details.push({
-                        id: arrete.id,
-                        numero: arrete.numero,
-                        status: 'error',
-                        error: 'PDF scanné - texte non extractible',
-                    });
-                }
-
-            } catch (error) {
-                // En cas d'erreur, marquer comme ERREUR
+            if (arrete._count.appeles > 0) {
+                // Arrêté avec appelés = indexé
                 await prisma.arrete.update({
                     where: { id: arrete.id },
                     data: {
-                        statutIndexation: StatutIndexation.ERREUR,
-                        messageErreur: error instanceof Error ? error.message : 'Erreur inconnue',
+                        statutIndexation: StatutIndexation.INDEXE,
+                        dateIndexation: new Date(),
                     },
                 });
-
-                results.errorCount++;
-                results.details.push({
-                    id: arrete.id,
-                    numero: arrete.numero,
-                    status: 'error',
-                    error: error instanceof Error ? error.message : 'Erreur inconnue',
+                results.indexed++;
+            } else {
+                // Arrêté sans appelés = en attente d'import Excel
+                await prisma.arrete.update({
+                    where: { id: arrete.id },
+                    data: {
+                        statutIndexation: StatutIndexation.EN_ATTENTE,
+                    },
                 });
+                results.pending++;
             }
         }
 
         return NextResponse.json({
             success: true,
-            message: `Ré-indexation terminée: ${results.successCount} succès, ${results.errorCount} erreurs`,
+            message: `Synchronisation terminée: ${results.indexed} indexés, ${results.pending} en attente d'import`,
             processed: results.total,
-            successCount: results.successCount,
-            errorCount: results.errorCount,
-            details: results.details,
+            indexed: results.indexed,
+            pending: results.pending,
         });
 
     } catch (error) {
-        console.error('Erreur ré-indexation en lot:', error);
+        console.error('Erreur synchronisation arrêtés:', error);
         return NextResponse.json(
-            { error: 'Erreur lors de la ré-indexation' },
+            { error: 'Erreur lors de la synchronisation' },
             { status: 500 }
         );
     }
