@@ -18,7 +18,7 @@ export function HomeFooter({ logoUrl }: HomeFooterProps) {
                     <div className="md:col-span-1">
                         <div className="flex items-center gap-3 mb-4">
                             {logoUrl ? (
-                                <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-white p-1">
+                                <div className="relative h-14 w-14 overflow-hidden rounded-lg bg-white p-1.5">
                                     <Image
                                         src={logoUrl}
                                         alt="Logo SCN"
@@ -27,7 +27,7 @@ export function HomeFooter({ logoUrl }: HomeFooterProps) {
                                     />
                                 </div>
                             ) : (
-                                <div className="h-10 w-10 flex items-center justify-center bg-white text-[var(--navy)] rounded-lg font-bold">
+                                <div className="h-14 w-14 flex items-center justify-center bg-white text-[var(--navy)] rounded-lg font-bold text-lg">
                                     SCN
                                 </div>
                             )}

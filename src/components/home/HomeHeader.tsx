@@ -44,7 +44,7 @@ export function HomeHeader({ logoUrl }: HomeHeaderProps) {
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-3 group">
                     {logoUrl ? (
-                        <div className="relative h-12 w-12 overflow-hidden rounded-lg border-2 border-[var(--navy)] transition-transform group-hover:scale-105">
+                        <div className="relative h-16 w-16 overflow-hidden rounded-lg transition-transform group-hover:scale-105">
                             <Image
                                 src={logoUrl}
                                 alt="Logo SCN"
@@ -53,7 +53,7 @@ export function HomeHeader({ logoUrl }: HomeHeaderProps) {
                             />
                         </div>
                     ) : (
-                        <div className="h-12 w-12 flex items-center justify-center border-2 border-[var(--navy)] rounded-lg font-bold text-[var(--navy)] text-lg transition-transform group-hover:scale-105">
+                        <div className="h-16 w-16 flex items-center justify-center border-2 border-[var(--navy)] rounded-lg font-bold text-[var(--navy)] text-xl transition-transform group-hover:scale-105">
                             SCN
                         </div>
                     )}

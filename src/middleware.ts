@@ -7,6 +7,7 @@ const PUBLIC_API_ROUTES = [
     "/api/auth",
     "/api/health",
     "/api/verifier",
+    "/api/admin/assets", // Configuration publique des assets (logo, hero)
 ]
 
 // Mapping des routes API par rôle
@@ -153,8 +154,9 @@ export const config = {
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
+         * - /uploads (public assets folder)
          * - Static assets (images, etc.)
          */
-        "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+        "/((?!_next/static|_next/image|favicon.ico|uploads|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
     ],
 }

@@ -37,9 +37,11 @@ async function saveConfig(config: AssetsConfig): Promise<void> {
     await writeFile(ASSETS_CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
-// GET: Retrieve current assets configuration
+// GET: Retrieve current assets configuration (public endpoint)
 export async function GET() {
     try {
+        // Pas de vérification d'authentification pour permettre l'accès public
+        // Cette route est utilisée par Header, Sidebar, AuthLayout, et pages publiques
         const config = await getConfig();
         return NextResponse.json(config);
     } catch (error) {

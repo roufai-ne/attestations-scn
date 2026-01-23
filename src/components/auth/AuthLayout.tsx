@@ -52,16 +52,16 @@ export function AuthLayout({
                 <div className="text-center mb-8">
                     <Link href="/" className="inline-block group">
                         {logoUrl ? (
-                            <div className="relative h-16 w-16 mx-auto mb-4 overflow-hidden rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm transition-transform group-hover:scale-105">
+                            <div className="relative h-20 w-20 mx-auto mb-4 overflow-hidden rounded-xl border-2 border-white/20 bg-white/10 backdrop-blur-sm transition-transform group-hover:scale-105">
                                 <Image
                                     src={logoUrl}
                                     alt="Logo SCN"
                                     fill
-                                    className="object-contain p-1"
+                                    className="object-contain p-1.5"
                                 />
                             </div>
                         ) : (
-                            <div className="h-16 w-16 mx-auto mb-4 flex items-center justify-center border-2 border-white/20 bg-white/10 backdrop-blur-sm rounded-xl font-bold text-white text-2xl transition-transform group-hover:scale-105">
+                            <div className="h-20 w-20 mx-auto mb-4 flex items-center justify-center border-2 border-white/20 bg-white/10 backdrop-blur-sm rounded-xl font-bold text-white text-3xl transition-transform group-hover:scale-105">
                                 SCN
                             </div>
                         )}

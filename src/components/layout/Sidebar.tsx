@@ -207,7 +207,7 @@ export function Sidebar() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 min-w-0">
                                 {logoUrl ? (
-                                    <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-white flex-shrink-0">
+                                    <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-white flex-shrink-0">
                                         <Image
                                             src={logoUrl}
                                             alt="Logo SCN"
@@ -216,8 +216,8 @@ export function Sidebar() {
                                         />
                                     </div>
                                 ) : (
-                                    <div className="p-2 bg-[var(--accent-orange)] rounded-xl flex-shrink-0 shadow-lg">
-                                        <Shield className="h-6 w-6 text-white" />
+                                    <div className="p-2.5 bg-[var(--accent-orange)] rounded-xl flex-shrink-0 shadow-lg">
+                                        <Shield className="h-7 w-7 text-white" />
                                     </div>
                                 )}
                                 {!collapsed && (
