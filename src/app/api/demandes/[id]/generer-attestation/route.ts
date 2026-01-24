@@ -82,32 +82,7 @@ export async function POST(
         });
 
         // Envoyer une notification à l'appelé
-        try {
-            const { notificationService } = await import('@/lib/notifications/notification.service');
-            const { CanalNotification } = await import('@prisma/client');
-
-            // Déterminer les canaux disponibles
-            const canaux: typeof CanalNotification[] = [];
-            if (demande.appele.email) canaux.push('EMAIL' as any);
-            if (demande.appele.telephone) canaux.push('SMS' as any);
-
-            if (canaux.length > 0) {
-                await notificationService.send({
-                    demandeId: id,
-                    type: TypeNotification.ATTESTATION_PRETE,
-                    canaux: canaux as any,
-                    data: {
-                        numeroEnregistrement: demande.numeroEnregistrement,
-                        nom: demande.appele.nom,
-                        prenom: demande.appele.prenom,
-                        numeroAttestation: attestation.numero,
-                    },
-                });
-            }
-        } catch (notifError) {
-            console.error('Erreur notification génération attestation:', notifError);
-            // Ne pas bloquer si la notification échoue
-        }
+        // Pas de notification lors de la génération (envoyée lors de la signature)
 
         return NextResponse.json({
             success: true,

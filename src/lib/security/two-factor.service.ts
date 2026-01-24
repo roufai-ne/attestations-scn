@@ -378,7 +378,10 @@ export class TwoFactorService {
      */
     private encryptData(data: string): string {
         const algorithm = 'aes-256-gcm';
-        const secret = process.env.NEXTAUTH_SECRET || 'default-secret-key-change-me';
+        const secret = process.env.NEXTAUTH_SECRET;
+        if (!secret) {
+            throw new Error('NEXTAUTH_SECRET environment variable is required for encryption');
+        }
         const key = crypto.scryptSync(secret, 'salt', 32);
         const iv = crypto.randomBytes(16);
         
@@ -396,7 +399,10 @@ export class TwoFactorService {
      */
     private decryptData(encryptedData: string): string {
         const algorithm = 'aes-256-gcm';
-        const secret = process.env.NEXTAUTH_SECRET || 'default-secret-key-change-me';
+        const secret = process.env.NEXTAUTH_SECRET;
+        if (!secret) {
+            throw new Error('NEXTAUTH_SECRET environment variable is required for decryption');
+        }
         const key = crypto.scryptSync(secret, 'salt', 32);
         
         const [ivHex, authTagHex, encrypted] = encryptedData.split(':');
@@ -478,9 +484,9 @@ export class TwoFactorService {
             const actionLabel = actionLabels[action] || action;
 
             // Envoyer l'email
-            const { emailService } = await import('@/lib/notifications/email.service');
+            const { unifiedEmailService } = await import('@/lib/notifications/unified-email.service');
 
-            await emailService.sendEmail({
+            await unifiedEmailService.sendEmail({
                 to: user.email,
                 subject: `Code de vérification - ${actionLabel}`,
                 html: `
@@ -543,7 +549,10 @@ export class TwoFactorService {
         };
 
         // Signer le token avec une clé secrète
-        const secret = process.env.NEXTAUTH_SECRET || 'default-secret-key-change-me';
+        const secret = process.env.NEXTAUTH_SECRET;
+        if (!secret) {
+            throw new Error('NEXTAUTH_SECRET environment variable is required for token signing');
+        }
         const data = JSON.stringify(payload);
         const signature = crypto
             .createHmac('sha256', secret)
@@ -562,7 +571,10 @@ export class TwoFactorService {
             const { data, signature } = decoded;
 
             // Vérifier la signature
-            const secret = process.env.NEXTAUTH_SECRET || 'default-secret-key-change-me';
+            const secret = process.env.NEXTAUTH_SECRET;
+            if (!secret) {
+                throw new Error('NEXTAUTH_SECRET environment variable is required for token verification');
+            }
             const expectedSignature = crypto
                 .createHmac('sha256', secret)
                 .update(data)

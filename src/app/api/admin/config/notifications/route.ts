@@ -19,10 +19,15 @@ export async function GET(request: NextRequest) {
       where: {
         cle: {
           in: [
+            'email_provider',
             'smtp_host',
             'smtp_port',
             'smtp_secure',
             'smtp_user',
+            'brevo_api_key',
+            'brevo_sender_email',
+            'brevo_sender_name',
+            'brevo_sms_enabled',
             'sms_provider',
             'twilio_account_sid',
             'twilio_phone_number',
@@ -34,14 +39,20 @@ export async function GET(request: NextRequest) {
 
     // Structurer la réponse
     const config: any = {
+      emailProvider: 'smtp', // Valeur par défaut
       smtp: {},
+      brevo: {},
       sms: {},
       whatsapp: {},
     };
 
     configs.forEach((c) => {
-      if (c.cle.startsWith('smtp_')) {
+      if (c.cle === 'email_provider') {
+        config.emailProvider = c.valeur;
+      } else if (c.cle.startsWith('smtp_')) {
         config.smtp[c.cle.replace('smtp_', '')] = c.valeur;
+      } else if (c.cle.startsWith('brevo_')) {
+        config.brevo[c.cle.replace('brevo_', '').replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())] = c.valeur;
       } else if (c.cle.startsWith('twilio_') || c.cle === 'sms_provider') {
         const key = c.cle.replace('twilio_', '').replace('sms_', '');
         config.sms[key === 'provider' ? 'provider' : `twilio${key.charAt(0).toUpperCase()}${key.slice(1)}`] = c.valeur;
@@ -65,10 +76,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { smtp, sms, whatsapp } = body;
+    const { emailProvider, smtp, brevo, sms, whatsapp } = body;
 
     // Sauvegarder chaque configuration
     const updates: Array<{ cle: string; valeur: string }> = [];
+
+    // Email Provider
+    if (emailProvider) {
+      updates.push({ cle: 'email_provider', valeur: emailProvider });
+    }
 
     // SMTP
     if (smtp) {
@@ -77,6 +93,14 @@ export async function POST(request: NextRequest) {
       if (smtp.secure) updates.push({ cle: 'smtp_secure', valeur: smtp.secure });
       if (smtp.user) updates.push({ cle: 'smtp_user', valeur: smtp.user });
       if (smtp.pass) updates.push({ cle: 'smtp_pass', valeur: smtp.pass });
+    }
+
+    // Brevo
+    if (brevo) {
+      if (brevo.apiKey) updates.push({ cle: 'brevo_api_key', valeur: brevo.apiKey });
+      if (brevo.senderEmail) updates.push({ cle: 'brevo_sender_email', valeur: brevo.senderEmail });
+      if (brevo.senderName) updates.push({ cle: 'brevo_sender_name', valeur: brevo.senderName });
+      if (brevo.smsEnabled !== undefined) updates.push({ cle: 'brevo_sms_enabled', valeur: brevo.smsEnabled });
     }
 
     // SMS

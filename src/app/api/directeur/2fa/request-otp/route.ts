@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { action } = body;
+        const { action, pin } = body;
 
         // Valider l'action
         const validActions = ['SIGN_ATTESTATION', 'SIGN_BATCH', 'CHANGE_PIN', 'CONFIG_UPDATE'];
@@ -35,6 +35,19 @@ export async function POST(request: NextRequest) {
                 { error: 'Action invalide' },
                 { status: 400 }
             );
+        }
+
+        // Vérifier le PIN avant d'envoyer l'OTP (première couche de sécurité)
+        if (pin) {
+            const { signatureService } = await import('@/lib/services/signature.service');
+            const pinValidation = await signatureService.validatePin(session.user.id, pin);
+            
+            if (!pinValidation.valid) {
+                return NextResponse.json(
+                    { error: pinValidation.reason || 'PIN incorrect' },
+                    { status: 403 }
+                );
+            }
         }
 
         // Vérifier si 2FA est requis

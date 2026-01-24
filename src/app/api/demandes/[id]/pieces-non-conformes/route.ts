@@ -91,29 +91,34 @@ export async function POST(
       },
     });
 
-    // Envoyer une notification à l'appelé
-    try {
-      if (updated.appele?.email || updated.appele?.telephone) {
+    // Envoyer une notification à l'appelé (ACTIVÉE)
+    if (updated.appele) {
+      try {
         const { notificationService } = await import('@/lib/notifications/notification.service');
+        const { shouldSendNotification } = await import('@/lib/notifications/notification.helpers');
 
-        const canaux: CanalNotification[] = [];
-        if (updated.appele.email) canaux.push(CanalNotification.EMAIL);
-        if (updated.appele.telephone) canaux.push(CanalNotification.SMS);
+        const notifDecision = shouldSendNotification(
+          { enabled: true },
+          updated.appele
+        );
 
-        await notificationService.send({
-          demandeId: updated.id,
-          type: TypeNotification.PIECES_NON_CONFORMES,
-          canaux,
-          data: {
-            numeroEnregistrement: updated.numeroEnregistrement,
-            nom: updated.appele.nom,
-            prenom: updated.appele.prenom,
-          },
-        });
+        if (notifDecision.send && notifDecision.channels.length > 0) {
+          await notificationService.send({
+            demandeId: updated.id,
+            type: TypeNotification.PIECES_NON_CONFORMES,
+            canaux: notifDecision.channels,
+            data: {
+              numeroEnregistrement: updated.numeroEnregistrement,
+              nom: updated.appele.nom,
+              prenom: updated.appele.prenom,
+              observations: observations || 'Pièces non conformes détectées',
+            },
+          });
+        }
+      } catch (notifError) {
+        console.error('Erreur envoi notification pièces non conformes:', notifError);
+        // Ne pas bloquer si la notification échoue
       }
-    } catch (notifError) {
-      console.error('Erreur envoi notification pièces non conformes:', notifError);
-      // Ne pas bloquer si la notification échoue
     }
 
     return NextResponse.json({

@@ -9,6 +9,7 @@ export enum TypeNotification {
   ATTESTATION_PRETE = 'ATTESTATION_PRETE',
   DEMANDE_EN_TRAITEMENT = 'DEMANDE_EN_TRAITEMENT',
   PIECES_NON_CONFORMES = 'PIECES_NON_CONFORMES',
+  DEMANDE_COPIE_ARRETE = 'DEMANDE_COPIE_ARRETE',
   MESSAGE_PERSONNALISE = 'MESSAGE_PERSONNALISE',
 }
 
@@ -42,6 +43,9 @@ export function getEmailSubject(type: TypeNotification, data: NotificationData):
     case TypeNotification.PIECES_NON_CONFORMES:
       return `Demande ${data.numeroEnregistrement} - Pièces à régulariser`;
 
+    case TypeNotification.DEMANDE_COPIE_ARRETE:
+      return `Demande ${data.numeroEnregistrement} - Copie d'arrêté requise`;
+
     case TypeNotification.MESSAGE_PERSONNALISE:
       return `Service Civique National - Information`;
 
@@ -70,6 +74,9 @@ export function getSmsMessage(type: TypeNotification, data: NotificationData): s
     case TypeNotification.PIECES_NON_CONFORMES:
       return `Service Civique: Pièces non conformes pour demande ${data.numeroEnregistrement}. Contactez-nous.`;
 
+    case TypeNotification.DEMANDE_COPIE_ARRETE:
+      return `Service Civique: Demande ${data.numeroEnregistrement} - Veuillez fournir une copie de votre arrêté. Présentez-vous à nos bureaux.`;
+
     case TypeNotification.MESSAGE_PERSONNALISE:
       return data.messagePersonnalise || 'Service Civique: Nouveau message disponible.';
 
@@ -97,6 +104,9 @@ export function getWhatsAppTemplate(type: TypeNotification): string {
 
     case TypeNotification.PIECES_NON_CONFORMES:
       return 'pieces_non_conformes';
+
+    case TypeNotification.DEMANDE_COPIE_ARRETE:
+      return 'demande_copie_arrete';
 
     default:
       return 'notification_generale';
@@ -144,6 +154,12 @@ export function getWhatsAppVariables(
       };
 
     case TypeNotification.PIECES_NON_CONFORMES:
+      return {
+        ...baseVariables,
+        '3': data.numeroEnregistrement,
+      };
+
+    case TypeNotification.DEMANDE_COPIE_ARRETE:
       return {
         ...baseVariables,
         '3': data.numeroEnregistrement,

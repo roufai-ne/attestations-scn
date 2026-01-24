@@ -103,14 +103,14 @@ export function RejectionDialog({ open, onOpenChange, demandeId, onSuccess }: Re
           </div>
 
           <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-            <p className="text-sm text-red-800">
+            <div className="text-sm text-red-800">
               <strong>Après rejet :</strong>
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>Le statut passera à "Rejetée"</li>
                 <li>L'appelé recevra une notification avec le motif</li>
                 <li>La demande ne pourra plus être traitée</li>
               </ul>
-            </p>
+            </div>
           </div>
         </div>
 

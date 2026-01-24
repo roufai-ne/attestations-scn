@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { emailService } from '@/lib/notifications/email.service';
+import { unifiedEmailService } from '@/lib/notifications/unified-email.service';
 import { rateLimit } from '@/lib/rate-limit';
 import crypto from 'crypto';
 
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
         try {
-            await emailService.sendPasswordReset(user.email, {
+            await unifiedEmailService.sendPasswordReset(user.email, {
                 nom: user.nom,
                 prenom: user.prenom,
                 resetLink,

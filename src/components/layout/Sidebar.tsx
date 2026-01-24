@@ -84,8 +84,8 @@ const navItems: NavItem[] = [
         roles: ['DIRECTEUR'],
     },
     {
-        title: 'Ma Signature',
-        href: '/directeur/profil/signature',
+        title: 'Mon Profil',
+        href: '/directeur/profil',
         icon: Settings,
         roles: ['DIRECTEUR'],
     },

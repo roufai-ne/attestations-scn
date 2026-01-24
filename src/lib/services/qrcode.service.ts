@@ -1,7 +1,21 @@
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 
-const QR_SECRET = process.env.QR_SECRET_KEY || 'default-secret-key';
+/**
+ * Récupère le secret QR de manière sécurisée
+ * Lève une erreur si non défini en production
+ */
+function getQRSecret(): string {
+    const secret = process.env.QR_SECRET_KEY;
+    if (!secret) {
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('QR_SECRET_KEY doit être défini en production pour signer les QR codes');
+        }
+        console.warn('[SECURITY] QR_SECRET_KEY non défini - utilisation d\'une valeur de développement');
+        return 'dev-only-qr-secret-do-not-use-in-production';
+    }
+    return secret;
+}
 
 export interface QRCodeData {
     id: string;
@@ -26,7 +40,7 @@ export class QRCodeService {
     private generateSignature(data: QRCodeData): string {
         const payload = `${data.id}|${data.numero}|${data.nom}|${data.prenom}|${data.dateNaissance}`;
         return crypto
-            .createHmac('sha256', QR_SECRET)
+            .createHmac('sha256', getQRSecret())
             .update(payload)
             .digest('hex');
     }

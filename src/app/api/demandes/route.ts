@@ -91,31 +91,36 @@ export async function POST(request: NextRequest) {
             },
         })
 
-        // Envoyer notification de confirmation de dépôt
-        const envoyerNotification = body.envoyerNotification !== false;
-        if (envoyerNotification) {
+        // Envoyer notification de confirmation de dépôt (DÉSACTIVÉE PAR DÉFAUT)
+        const envoyerNotification = body.envoyerNotification === true; // Explicitement true requis
+        if (envoyerNotification && demande.appele) {
             try {
-                if (demande.appele?.email || demande.appele?.telephone) {
-                    const { notificationService } = await import('@/lib/notifications/notification.service')
+                const { notificationService } = await import('@/lib/notifications/notification.service');
+                const { shouldSendNotification } = await import('@/lib/notifications/notification.helpers');
 
-                    const canaux: CanalNotification[] = []
-                    if (demande.appele.email) canaux.push(CanalNotification.EMAIL)
-                    if (demande.appele.telephone) canaux.push(CanalNotification.SMS)
+                const notifDecision = shouldSendNotification(
+                    {
+                        enabled: true,
+                        channels: body.canauxNotification, // Optionnel: canaux spécifiques
+                    },
+                    demande.appele
+                );
 
+                if (notifDecision.send && notifDecision.channels.length > 0) {
                     await notificationService.send({
                         demandeId: demande.id,
                         type: TypeNotification.CONFIRMATION_DEPOT,
-                        canaux,
+                        canaux: notifDecision.channels,
                         data: {
                             numeroEnregistrement: demande.numeroEnregistrement,
                             nom: demande.appele.nom,
                             prenom: demande.appele.prenom,
                             dateEnregistrement: new Date(demande.dateEnregistrement).toLocaleDateString('fr-FR'),
                         },
-                    })
+                    });
                 }
             } catch (notifError) {
-                console.error('Erreur envoi notification confirmation dépôt:', notifError)
+                console.error('Erreur envoi notification confirmation dépôt:', notifError);
                 // Ne pas bloquer la création si la notification échoue
             }
         }

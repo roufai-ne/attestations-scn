@@ -29,6 +29,13 @@ interface ConfigSmtp {
   pass: string;
 }
 
+interface ConfigBrevo {
+  apiKey: string;
+  senderEmail: string;
+  senderName: string;
+  smsEnabled: string;
+}
+
 interface ConfigSms {
   provider: string;
   twilioAccountSid: string;
@@ -45,12 +52,21 @@ interface ConfigWhatsApp {
 
 export default function NotificationsConfigPage() {
   const router = useRouter();
+  const [emailProvider, setEmailProvider] = useState<'smtp' | 'brevo'>('smtp');
+  
   const [smtp, setSmtp] = useState<ConfigSmtp>({
     host: '',
     port: '587',
     secure: 'false',
     user: '',
     pass: '',
+  });
+
+  const [brevo, setBrevo] = useState<ConfigBrevo>({
+    apiKey: '',
+    senderEmail: 'noreply@servicecivique.ne',
+    senderName: 'Service Civique National',
+    smsEnabled: 'false',
   });
 
   const [sms, setSms] = useState<ConfigSms>({
@@ -89,6 +105,13 @@ export default function NotificationsConfigPage() {
       const response = await fetch('/api/admin/config/notifications');
       if (response.ok) {
         const config = await response.json();
+        
+        // Provider email
+        if (config.emailProvider) {
+          setEmailProvider(config.emailProvider);
+        }
+        
+        // Config SMTP
         if (config.smtp) {
           setSmtp({
             host: config.smtp.host || '',
@@ -98,6 +121,18 @@ export default function NotificationsConfigPage() {
             pass: config.smtp.pass || '',
           });
         }
+        
+        // Config Brevo
+        if (config.brevo) {
+          setBrevo({
+            apiKey: config.brevo.apiKey || '',
+            senderEmail: config.brevo.senderEmail || 'noreply@servicecivique.ne',
+            senderName: config.brevo.senderName || 'Service Civique National',
+            smsEnabled: config.brevo.smsEnabled || 'false',
+          });
+        }
+        
+        // Config SMS
         if (config.sms) {
           setSms({
             provider: config.sms.provider || 'twilio',
@@ -108,6 +143,8 @@ export default function NotificationsConfigPage() {
             apiKey: config.sms.apiKey || '',
           });
         }
+        
+        // Config WhatsApp
         if (config.whatsapp) {
           setWhatsapp({
             phoneNumberId: config.whatsapp.phoneNumberId || '',
@@ -189,7 +226,13 @@ export default function NotificationsConfigPage() {
       const response = await fetch('/api/admin/config/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ smtp, sms, whatsapp }),
+        body: JSON.stringify({ 
+          emailProvider, 
+          smtp, 
+          brevo,
+          sms, 
+          whatsapp 
+        }),
       });
 
       if (response.ok) {
@@ -219,70 +262,159 @@ export default function NotificationsConfigPage() {
         </Button>
       </div>
 
-      {/* Configuration SMTP / Email */}
+      {/* Configuration Email */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            Configuration SMTP (Email)
+            Configuration Email
           </CardTitle>
           <CardDescription>
-            Paramètres du serveur SMTP pour l'envoi d'emails
+            Choisissez votre fournisseur d'envoi d'emails
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Hôte SMTP</Label>
-              <Input
-                value={smtp.host}
-                onChange={(e) => setSmtp({ ...smtp, host: e.target.value })}
-                placeholder="smtp.example.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Port</Label>
-              <Input
-                type="number"
-                value={smtp.port}
-                onChange={(e) => setSmtp({ ...smtp, port: e.target.value })}
-                placeholder="587"
-              />
-            </div>
-          </div>
-
           <div className="space-y-2">
-            <Label>Sécurité</Label>
-            <Select value={smtp.secure} onValueChange={(value) => setSmtp({ ...smtp, secure: value })}>
+            <Label>Fournisseur Email</Label>
+            <Select value={emailProvider} onValueChange={(value: 'smtp' | 'brevo') => setEmailProvider(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="false">STARTTLS (Port 587)</SelectItem>
-                <SelectItem value="true">SSL/TLS (Port 465)</SelectItem>
+                <SelectItem value="brevo">Brevo (Recommandé)</SelectItem>
+                <SelectItem value="smtp">SMTP Classique</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-sm text-gray-500">
+              {emailProvider === 'brevo' 
+                ? '✓ Brevo offre une meilleure délivrabilité et inclut les SMS (optionnel)'
+                : 'Configuration SMTP traditionnelle via votre serveur email'
+              }
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Utilisateur</Label>
-              <Input
-                value={smtp.user}
-                onChange={(e) => setSmtp({ ...smtp, user: e.target.value })}
-                placeholder="user@example.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Mot de passe</Label>
-              <Input
-                type="password"
-                value={smtp.pass}
-                onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })}
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
+          {emailProvider === 'brevo' ? (
+            /* Configuration Brevo */
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
+                <p className="font-semibold text-blue-900 mb-1">📧 Brevo (anciennement Sendinblue)</p>
+                <p className="text-blue-700 mb-2">
+                  Plateforme d'emailing professionnelle avec haute délivrabilité
+                </p>
+                <ul className="text-blue-700 space-y-1 list-disc list-inside">
+                  <li>Plan gratuit : 300 emails/jour</li>
+                  <li>SMS optionnels (payants)</li>
+                  <li>Statistiques détaillées</li>
+                  <li>Créer un compte : <a href="https://www.brevo.com" target="_blank" rel="noopener" className="underline">brevo.com</a></li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Clé API Brevo *</Label>
+                <Input
+                  type="password"
+                  value={brevo.apiKey}
+                  onChange={(e) => setBrevo({ ...brevo, apiKey: e.target.value })}
+                  placeholder="xkeysib-xxxxxxxxxxxxxxxxxxxxx"
+                />
+                <p className="text-xs text-gray-500">
+                  Obtenir votre clé API : <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener" className="text-blue-600 underline">app.brevo.com/settings/keys/api</a>
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Email expéditeur *</Label>
+                  <Input
+                    type="email"
+                    value={brevo.senderEmail}
+                    onChange={(e) => setBrevo({ ...brevo, senderEmail: e.target.value })}
+                    placeholder="noreply@servicecivique.ne"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nom expéditeur *</Label>
+                  <Input
+                    value={brevo.senderName}
+                    onChange={(e) => setBrevo({ ...brevo, senderName: e.target.value })}
+                    placeholder="Service Civique National"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>SMS Brevo (optionnel)</Label>
+                <Select value={brevo.smsEnabled} onValueChange={(value) => setBrevo({ ...brevo, smsEnabled: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="false">Désactivé</SelectItem>
+                    <SelectItem value="true">Activé (nécessite crédits SMS)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Les SMS Brevo sont payants. Achetez des crédits sur votre tableau de bord Brevo.
+                </p>
+              </div>
+            </>
+          ) : (
+            /* Configuration SMTP */
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Hôte SMTP</Label>
+                  <Input
+                    value={smtp.host}
+                    onChange={(e) => setSmtp({ ...smtp, host: e.target.value })}
+                    placeholder="smtp.example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Port</Label>
+                  <Input
+                    type="number"
+                    value={smtp.port}
+                    onChange={(e) => setSmtp({ ...smtp, port: e.target.value })}
+                    placeholder="587"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Sécurité</Label>
+                <Select value={smtp.secure} onValueChange={(value) => setSmtp({ ...smtp, secure: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="false">STARTTLS (Port 587)</SelectItem>
+                    <SelectItem value="true">SSL/TLS (Port 465)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Utilisateur</Label>
+                  <Input
+                    value={smtp.user}
+                    onChange={(e) => setSmtp({ ...smtp, user: e.target.value })}
+                    placeholder="user@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Mot de passe</Label>
+                  <Input
+                    type="password"
+                    value={smtp.pass}
+                    onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })}
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           <Button onClick={handleTestEmail} disabled={testing.email} variant="outline">
             {testing.email ? (

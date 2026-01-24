@@ -2,6 +2,7 @@ import type { NextAuthConfig } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { compare } from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+import { verifyHCaptchaToken } from "@/lib/security/turnstile.service"
 
 // Nombre maximum de tentatives avant verrouillage
 const MAX_LOGIN_ATTEMPTS = 5
@@ -61,6 +62,22 @@ export const authConfig = {
             async authorize(credentials, request) {
                 if (!credentials?.email || !credentials?.password) {
                     return null
+                }
+
+                // Vérifier le token hCaptcha
+                const hcaptchaToken = credentials.hcaptchaToken as string | undefined;
+                if (hcaptchaToken) {
+                    const hcaptchaResult = await verifyHCaptchaToken(hcaptchaToken);
+                    if (!hcaptchaResult.success) {
+                        console.log(`[AUTH] Vérification CAPTCHA échouée: ${hcaptchaResult.error}`);
+                        return null;
+                    }
+                } else {
+                    // En production, refuser si pas de token CAPTCHA
+                    if (process.env.NODE_ENV === 'production') {
+                        console.log('[AUTH] Token CAPTCHA manquant en production');
+                        return null;
+                    }
                 }
 
                 const email = credentials.email as string

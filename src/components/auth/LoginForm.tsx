@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Mail, Lock, AlertCircle, Loader2 } from "lucide-react"
+import { HCaptchaWidget, useHCaptcha } from "@/components/security/TurnstileWidget"
 
 export default function LoginForm() {
     const router = useRouter()
@@ -15,27 +16,49 @@ export default function LoginForm() {
     const [password, setPassword] = useState("")
     const [error, setError] = useState("")
     const [isLoading, setIsLoading] = useState(false)
+    
+    // Gestion du token hCaptcha avec nouvelles fonctionnalités
+    const { 
+        token: hcaptchaToken, 
+        eKey,
+        isVerified, 
+        captchaRef,
+        handleSuccess, 
+        handleError, 
+        handleExpire, 
+        reset 
+    } = useHCaptcha()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError("")
+        
+        // Vérifier que le CAPTCHA est validé
+        if (!isVerified || !hcaptchaToken) {
+            setError("Veuillez compléter la vérification de sécurité")
+            return
+        }
+        
         setIsLoading(true)
 
         try {
             const result = await signIn("credentials", {
                 email,
                 password,
+                hcaptchaToken, // Envoyer le token CAPTCHA
                 redirect: false,
             })
 
             if (result?.error) {
                 setError("Email ou mot de passe incorrect")
+                reset() // Réinitialiser le CAPTCHA après une erreur
             } else {
                 // Recharger pour obtenir la session et laisser le serveur rediriger selon le rôle
                 window.location.href = callbackUrl === "/" ? "/login" : callbackUrl
             }
         } catch (error) {
             setError("Une erreur est survenue. Veuillez réessayer.")
+            reset() // Réinitialiser le CAPTCHA après une erreur
         } finally {
             setIsLoading(false)
         }
@@ -100,9 +123,24 @@ export default function LoginForm() {
                     </div>
                 </div>
 
+                {/* Vérification hCaptcha */}
+                <div className="pt-2">
+                    <HCaptchaWidget
+                        onSuccess={handleSuccess}
+                        onError={handleError}
+                        onExpire={handleExpire}
+                        onLoad={() => console.log('[hCaptcha] Widget chargé')}
+                        onOpen={() => console.log('[hCaptcha] Challenge ouvert')}
+                        onClose={() => console.log('[hCaptcha] Challenge fermé')}
+                        className="flex justify-center"
+                        size="normal"
+                        tabindex={0}
+                    />
+                </div>
+
                 <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || !isVerified}
                     className="w-full rounded-xl bg-[var(--accent-orange)] hover:bg-[var(--accent-orange-dark)] py-3.5 font-semibold text-white shadow-lg transition-all hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-orange)] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isLoading ? (

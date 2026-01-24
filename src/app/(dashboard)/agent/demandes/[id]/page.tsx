@@ -35,6 +35,7 @@ import {
 import { ValidationDialog } from '@/components/agent/ValidationDialog';
 import { RejectionDialog } from '@/components/agent/RejectionDialog';
 import { EditDemandeDialog } from '@/components/agent/EditDemandeDialog';
+import { ArreteVerificationPanel } from '@/components/agent/ArreteVerificationPanel';
 
 export default function DemandeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -45,6 +46,8 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
   const [rejectionOpen, setRejectionOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [verifyingPiece, setVerifyingPiece] = useState<string | null>(null);
+  const [arreteVerified, setArreteVerified] = useState<boolean>(false);
+  const [arreteInfo, setArreteInfo] = useState<any>(null);
 
   useEffect(() => {
     fetchDemande();
@@ -139,7 +142,13 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
     return demande &&
       ['ENREGISTREE', 'EN_TRAITEMENT', 'PIECES_NON_CONFORMES'].includes(demande.statut) &&
       allPiecesVerified() &&
-      allPiecesConformes();
+      allPiecesConformes() &&
+      arreteVerified;
+  };
+
+  const handleArreteVerification = (verified: boolean, info?: any) => {
+    setArreteVerified(verified);
+    setArreteInfo(info || null);
   };
 
   const canReject = () => {
@@ -473,6 +482,24 @@ export default function DemandeDetailPage({ params }: { params: Promise<{ id: st
             )}
           </CardContent>
         </Card>
+
+        {/* Vérification dans les arrêtés */}
+        {demande.appele && (
+          <ArreteVerificationPanel
+            demandeId={id}
+            appele={{
+              nom: demande.appele.nom,
+              prenom: demande.appele.prenom,
+              promotion: demande.appele.promotion,
+              dateNaissance: demande.appele.dateNaissance,
+              lieuNaissance: demande.appele.lieuNaissance,
+            }}
+            statut={demande.statut}
+            isVerified={arreteVerified}
+            savedArreteInfo={arreteInfo}
+            onVerificationChange={handleArreteVerification}
+          />
+        )}
 
         {/* Vérification des pièces */}
         <Card className="md:col-span-2">

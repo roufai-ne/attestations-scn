@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { attestationIds, pin, twoFactorToken } = body;
+        const { attestationIds, pin, otpCode, twoFactorToken } = body;
 
         if (!attestationIds || !Array.isArray(attestationIds) || attestationIds.length === 0) {
             return NextResponse.json(
@@ -39,22 +39,37 @@ export async function POST(request: NextRequest) {
         const is2FARequired = await twoFactorService.is2FARequired(session.user.id);
         
         if (is2FARequired) {
-            // Vérifier le token 2FA
-            if (!twoFactorToken) {
+            // Vérifier le code OTP (nouvelle méthode) ou le token de session (ancienne méthode)
+            if (otpCode) {
+                // Vérifier directement le code OTP
+                const otpVerification = await twoFactorService.verifyOTP(
+                    session.user.id,
+                    'SIGN_BATCH',
+                    otpCode
+                );
+
+                if (!otpVerification.valid) {
+                    return NextResponse.json(
+                        { error: otpVerification.error || 'Code OTP invalide ou expiré' },
+                        { status: 403 }
+                    );
+                }
+            } else if (twoFactorToken) {
+                // Ancienne méthode avec token de session
+                const tokenVerification = twoFactorService.verifySessionToken(
+                    twoFactorToken,
+                    'SIGN_BATCH'
+                );
+
+                if (!tokenVerification.valid || tokenVerification.userId !== session.user.id) {
+                    return NextResponse.json(
+                        { error: 'Code 2FA invalide ou expiré' },
+                        { status: 403 }
+                    );
+                }
+            } else {
                 return NextResponse.json(
                     { error: 'Code 2FA requis. Demandez un code via /api/directeur/2fa/request-otp avec action=SIGN_BATCH' },
-                    { status: 403 }
-                );
-            }
-
-            const tokenVerification = twoFactorService.verifySessionToken(
-                twoFactorToken,
-                'SIGN_BATCH'
-            );
-
-            if (!tokenVerification.valid || tokenVerification.userId !== session.user.id) {
-                return NextResponse.json(
-                    { error: 'Code 2FA invalide ou expiré' },
                     { status: 403 }
                 );
             }

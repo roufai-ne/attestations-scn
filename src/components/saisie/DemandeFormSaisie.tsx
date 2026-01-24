@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { TypePiece } from "@prisma/client"
 import { Save, Send, AlertCircle, Loader2, Info, Bell } from "lucide-react"
-import { ArreteSearchInput } from "@/components/agent/ArreteSearchInput"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -374,28 +373,22 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                 </div>
             </div>
 
+
             {/* Section 3: Service civique */}
             <div className="rounded-lg border bg-card p-6">
                 <h2 className="mb-4 text-xl font-semibold">Service civique</h2>
                 <div className="space-y-4">
-                    {/* Recherche dans les arrêtés */}
-                    <div className="col-span-2">
-                        <ArreteSearchInput
-                            value={numeroArrete}
-                            onChange={(numero, dateArrete) => {
-                                setValue("numeroArrete", numero);
-                                // Convertir en format yyyy-MM-dd pour input[type="date"]
-                                const dateObj = new Date(dateArrete);
-                                const formattedDate = dateObj.toISOString().split('T')[0];
-                                setValue("dateArrete", formattedDate as any);
-                            }}
-                        />
+                    {/* Info sur la vérification de l'arrêté */}
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                            <strong>Note :</strong> La vérification de présence dans les arrêtés sera effectuée par l'agent traitant lors de la validation du dossier.
+                        </p>
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <label className="mb-2 block text-sm font-medium">
-                                Numéro d'arrêté
+                                Numéro d'arrêté (si connu)
                             </label>
                             <input
                                 {...register("numeroArrete")}
@@ -407,13 +400,13 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                                 <p className="mt-1 text-sm text-red-600">{errors.numeroArrete.message}</p>
                             )}
                             <p className="mt-1 text-xs text-muted-foreground">
-                                Utilisez la recherche ci-dessus pour trouver l'arrêté
+                                Optionnel - Sera vérifié par l'agent
                             </p>
                         </div>
 
                         <div>
                             <label className="mb-2 block text-sm font-medium">
-                                Date de l'arrêté
+                                Date de l'arrêté (si connue)
                             </label>
                             <input
                                 {...register("dateArrete", { valueAsDate: true })}
@@ -424,7 +417,7 @@ export default function DemandeFormSaisie({ mode = 'create', initialData, demand
                                 <p className="mt-1 text-sm text-red-600">{errors.dateArrete.message as string}</p>
                             )}
                             <p className="mt-1 text-xs text-muted-foreground">
-                                Remplie automatiquement par la recherche
+                                Optionnel - Sera vérifié par l'agent
                             </p>
                         </div>
 

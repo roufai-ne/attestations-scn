@@ -25,7 +25,7 @@ export async function POST(
         const { id } = await params;
 
         const body = await request.json();
-        const { pin, twoFactorToken } = body;
+        const { pin, otpCode, twoFactorToken } = body;
 
         if (!pin) {
             return errorResponse('PIN manquant', 400);
@@ -35,18 +35,30 @@ export async function POST(
         const is2FARequired = await twoFactorService.is2FARequired(session.user.id);
         
         if (is2FARequired) {
-            // Vérifier le token 2FA
-            if (!twoFactorToken) {
+            // Vérifier le code OTP (nouvelle méthode) ou le token de session (ancienne méthode)
+            if (otpCode) {
+                // Vérifier directement le code OTP
+                const otpVerification = await twoFactorService.verifyOTP(
+                    session.user.id,
+                    'SIGN_ATTESTATION',
+                    otpCode
+                );
+
+                if (!otpVerification.valid) {
+                    return errorResponse(otpVerification.error || 'Code OTP invalide ou expiré', 403);
+                }
+            } else if (twoFactorToken) {
+                // Ancienne méthode avec token de session
+                const tokenVerification = twoFactorService.verifySessionToken(
+                    twoFactorToken,
+                    'SIGN_ATTESTATION'
+                );
+
+                if (!tokenVerification.valid || tokenVerification.userId !== session.user.id) {
+                    return errorResponse('Code 2FA invalide ou expiré', 403);
+                }
+            } else {
                 return errorResponse('Code 2FA requis. Demandez un code via /api/directeur/2fa/request-otp avec action=SIGN_ATTESTATION', 403);
-            }
-
-            const tokenVerification = twoFactorService.verifySessionToken(
-                twoFactorToken,
-                'SIGN_ATTESTATION'
-            );
-
-            if (!tokenVerification.valid || tokenVerification.userId !== session.user.id) {
-                return errorResponse('Code 2FA invalide ou expiré', 403);
             }
         }
 
@@ -72,24 +84,25 @@ export async function POST(
                 },
             });
 
+            // Notification ACTIVÉE lors de la signature
             if (attestationData?.demande.appele) {
-                const appele = attestationData.demande.appele;
-                if (appele.email || appele.telephone) {
-                    const { notificationService } = await import('@/lib/notifications/notification.service');
-                    
-                    // Build canaux array based on available contact methods
-                    const canaux: CanalNotification[] = [];
-                    if (appele.email) canaux.push(CanalNotification.EMAIL);
-                    if (appele.telephone) canaux.push(CanalNotification.SMS);
-                    
+                const { notificationService } = await import('@/lib/notifications/notification.service');
+                const { shouldSendNotification } = await import('@/lib/notifications/notification.helpers');
+
+                const notifDecision = shouldSendNotification(
+                    { enabled: true },
+                    attestationData.demande.appele
+                );
+
+                if (notifDecision.send && notifDecision.channels.length > 0) {
                     await notificationService.send({
                         demandeId: attestationData.demande.id,
                         type: TypeNotification.ATTESTATION_PRETE,
-                        canaux,
+                        canaux: notifDecision.channels,
                         data: {
                             numeroEnregistrement: attestationData.demande.numeroEnregistrement,
-                            nom: appele.nom,
-                            prenom: appele.prenom,
+                            nom: attestationData.demande.appele.nom,
+                            prenom: attestationData.demande.appele.prenom,
                             numeroAttestation: attestation.numero,
                         },
                     });

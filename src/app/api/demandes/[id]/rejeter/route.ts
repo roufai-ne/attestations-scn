@@ -74,21 +74,22 @@ export async function POST(
       },
     });
 
-    // Envoyer une notification à l'appelé avec le motif (si demandé)
-    if (envoyerNotification) {
+    // Envoyer une notification à l'appelé avec le motif (DÉSACTIVÉE PAR DÉFAUT)
+    if (envoyerNotification && updated.appele) {
       try {
-        if (updated.appele?.email || updated.appele?.telephone) {
-          const { notificationService } = await import('@/lib/notifications/notification.service');
-          
-          // Build canaux array based on available contact methods
-          const canaux: CanalNotification[] = [];
-          if (updated.appele.email) canaux.push(CanalNotification.EMAIL);
-          if (updated.appele.telephone) canaux.push(CanalNotification.SMS);
-          
+        const { notificationService } = await import('@/lib/notifications/notification.service');
+        const { shouldSendNotification } = await import('@/lib/notifications/notification.helpers');
+
+        const notifDecision = shouldSendNotification(
+          { enabled: true },
+          updated.appele
+        );
+
+        if (notifDecision.send && notifDecision.channels.length > 0) {
           await notificationService.send({
             demandeId: updated.id,
             type: TypeNotification.DEMANDE_REJETEE,
-            canaux,
+            canaux: notifDecision.channels,
             data: {
               numeroEnregistrement: updated.numeroEnregistrement,
               nom: updated.appele.nom,

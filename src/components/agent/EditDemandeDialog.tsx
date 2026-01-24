@@ -57,7 +57,7 @@ export function EditDemandeDialog({ open, onOpenChange, demande, onSuccess }: Ed
 
     try {
       const response = await fetch(`/api/demandes/${demande.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });

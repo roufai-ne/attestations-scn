@@ -4,7 +4,7 @@
  * Basé sur le Prompt 6.1 - Services de Notification
  */
 
-import { emailService } from './email.service';
+import { unifiedEmailService } from './unified-email.service';
 import { smsService } from './sms.service';
 import { whatsappService } from './whatsapp.service';
 import {
@@ -139,7 +139,7 @@ export class NotificationService {
     try {
       switch (type) {
         case TypeNotification.CONFIRMATION_DEPOT:
-          success = await emailService.sendConfirmationDepot(email, {
+          success = await unifiedEmailService.sendConfirmationDepot(email, {
             numeroEnregistrement: data.numeroEnregistrement,
             nom: data.nom,
             prenom: data.prenom,
@@ -148,7 +148,7 @@ export class NotificationService {
           break;
 
         case TypeNotification.DEMANDE_REJETEE:
-          success = await emailService.sendDemandeRejetee(email, {
+          success = await unifiedEmailService.sendDemandeRejetee(email, {
             numeroEnregistrement: data.numeroEnregistrement,
             nom: data.nom,
             prenom: data.prenom,
@@ -157,7 +157,7 @@ export class NotificationService {
           break;
 
         case TypeNotification.ATTESTATION_PRETE:
-          success = await emailService.sendAttestationPrete(email, {
+          success = await unifiedEmailService.sendAttestationPrete(email, {
             numeroEnregistrement: data.numeroEnregistrement,
             numeroAttestation: data.numeroAttestation || '',
             nom: data.nom,
@@ -389,7 +389,7 @@ export class NotificationService {
     whatsapp: boolean;
   }> {
     const [email, sms, whatsapp] = await Promise.all([
-      emailService.testConnection(),
+      unifiedEmailService.testConnection(),
       smsService.testConnection(),
       whatsappService.testConnection(),
     ]);

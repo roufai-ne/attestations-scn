@@ -14,11 +14,12 @@ const nextConfig: NextConfig = {
     // CSP de base (moins restrictive pour permettre le fonctionnement de Next.js)
     const baseCSP = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Nécessaire pour Next.js
-      "style-src 'self' 'unsafe-inline'", // Nécessaire pour les styles inline
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://hcaptcha.com https://*.hcaptcha.com", // Nécessaire pour Next.js + hCaptcha
+      "style-src 'self' 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com", // Nécessaire pour les styles inline + hCaptcha
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https:",
+      "connect-src 'self' https: https://hcaptcha.com https://*.hcaptcha.com", // hCaptcha API
+      "frame-src 'self' https://hcaptcha.com https://*.hcaptcha.com", // hCaptcha challenge frame
       "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'",
