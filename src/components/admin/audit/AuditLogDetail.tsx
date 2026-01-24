@@ -104,13 +104,19 @@ export function AuditLogDetail({ log, open, onOpenChange }: AuditLogDetailProps)
                 <User className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Utilisateur</p>
-                  <p className="text-base font-medium">
-                    {log.user.prenom} {log.user.nom}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{log.user.email}</p>
-                  <Badge variant="outline" className="mt-1">
-                    {log.user.role}
-                  </Badge>
+                  {log.user ? (
+                    <>
+                      <p className="text-base font-medium">
+                        {log.user.prenom} {log.user.nom}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{log.user.email}</p>
+                      <Badge variant="outline" className="mt-1">
+                        {log.user.role}
+                      </Badge>
+                    </>
+                  ) : (
+                    <p className="text-base text-muted-foreground italic">Utilisateur supprimé</p>
+                  )}
                 </div>
               </div>
             </CardContent>

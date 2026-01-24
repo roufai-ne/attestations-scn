@@ -21,6 +21,7 @@ export interface NotificationData {
   dateEnregistrement?: string;
   motifRejet?: string;
   messagePersonnalise?: string;
+  observations?: string;
 }
 
 /**

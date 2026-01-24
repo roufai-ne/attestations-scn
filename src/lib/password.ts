@@ -1,4 +1,5 @@
 import { hash, compare } from "bcryptjs"
+import { randomInt } from "crypto"
 
 const SALT_ROUNDS = 10
 
@@ -20,14 +21,14 @@ export async function verifyPassword(
 }
 
 /**
- * Génère un mot de passe temporaire aléatoire
+ * Génère un mot de passe temporaire aléatoire (cryptographiquement sécurisé)
  */
 export function generateTemporaryPassword(length: number = 12): string {
     const charset =
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
     let password = ""
     for (let i = 0; i < length; i++) {
-        password += charset.charAt(Math.floor(Math.random() * charset.length))
+        password += charset.charAt(randomInt(0, charset.length))
     }
     return password
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { HomeHeader, HeroSection, ServicesSection, HomeFooter } from '@/components/home';
 
 export default function HomePage() {
@@ -104,18 +105,18 @@ export default function HomePage() {
               de manière simple et sécurisée.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
+              <Link
                 href="/login"
                 className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-[var(--accent-orange)] hover:bg-[var(--accent-orange-dark)] text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 Connexion
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/verifier"
                 className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-all duration-200 border border-white/30"
               >
                 Vérifier une attestation
-              </a>
+              </Link>
             </div>
           </div>
         </div>

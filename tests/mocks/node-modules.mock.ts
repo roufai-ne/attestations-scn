@@ -32,7 +32,7 @@ export const mockNextAuth = vi.fn(() => ({
   signIn: vi.fn(),
   signOut: vi.fn(),
   auth: vi.fn(),
-}));
+})) as ReturnType<typeof vi.fn> & { default?: ReturnType<typeof vi.fn> };
 
 mockNextAuth.default = mockNextAuth;
 

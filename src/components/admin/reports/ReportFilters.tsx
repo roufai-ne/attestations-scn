@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -10,12 +10,18 @@ import { Download } from 'lucide-react';
 
 interface ReportFiltersProps {
   reportType: 'demandes' | 'attestations' | 'agents';
-  onExport: (filters: any) => void;
+  onExport: (filters: Record<string, string>) => void;
   loading: boolean;
 }
 
+interface Agent {
+  id: string;
+  nom: string;
+  prenom: string;
+}
+
 export function ReportFilters({ reportType, onExport, loading }: ReportFiltersProps) {
-  const [filters, setFilters] = useState<any>({
+  const [filters, setFilters] = useState({
     dateDebut: '',
     dateFin: '',
     statut: 'TOUS',
@@ -24,17 +30,10 @@ export function ReportFilters({ reportType, onExport, loading }: ReportFiltersPr
     typeSignature: 'TOUS',
   });
 
-  const [agents, setAgents] = useState<any[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [promotions, setPromotions] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (reportType === 'demandes') {
-      fetchAgents();
-      fetchPromotions();
-    }
-  }, [reportType]);
-
-  const fetchAgents = async () => {
+  const fetchAgents = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/users?role=AGENT&actif=true');
       if (response.ok) {
@@ -44,9 +43,9 @@ export function ReportFilters({ reportType, onExport, loading }: ReportFiltersPr
     } catch (error) {
       console.error('Erreur chargement agents:', error);
     }
-  };
+  }, []);
 
-  const fetchPromotions = async () => {
+  const fetchPromotions = useCallback(async () => {
     try {
       const response = await fetch('/api/demandes/promotions');
       if (response.ok) {
@@ -56,14 +55,25 @@ export function ReportFilters({ reportType, onExport, loading }: ReportFiltersPr
     } catch (error) {
       console.error('Erreur chargement promotions:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (reportType === 'demandes') {
+      const loadData = async () => {
+        await Promise.all([fetchAgents(), fetchPromotions()]);
+      };
+      loadData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportType]);
 
   const handleExport = () => {
     // Nettoyer les filtres vides
-    const cleanFilters: any = {};
-    Object.keys(filters).forEach((key) => {
-      if (filters[key] && filters[key] !== 'TOUS' && filters[key] !== 'ALL') {
-        cleanFilters[key] = filters[key];
+    const cleanFilters: Record<string, string> = {};
+    (Object.keys(filters) as Array<keyof typeof filters>).forEach((key) => {
+      const value = filters[key];
+      if (value && value !== 'TOUS' && value !== 'ALL') {
+        cleanFilters[key] = value;
       }
     });
     onExport(cleanFilters);
@@ -106,11 +116,14 @@ export function ReportFilters({ reportType, onExport, loading }: ReportFiltersPr
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="TOUS">Tous les statuts</SelectItem>
-                  <SelectItem value="EN_ATTENTE">En attente</SelectItem>
-                  <SelectItem value="EN_COURS">En cours</SelectItem>
+                  <SelectItem value="ENREGISTREE">Enregistrée</SelectItem>
+                  <SelectItem value="EN_TRAITEMENT">En traitement</SelectItem>
+                  <SelectItem value="PIECES_NON_CONFORMES">Pièces non conformes</SelectItem>
                   <SelectItem value="VALIDEE">Validée</SelectItem>
+                  <SelectItem value="EN_ATTENTE_SIGNATURE">En attente signature</SelectItem>
+                  <SelectItem value="SIGNEE">Signée</SelectItem>
                   <SelectItem value="REJETEE">Rejetée</SelectItem>
-                  <SelectItem value="ATTESTATION_GENEREE">Attestation générée</SelectItem>
+                  <SelectItem value="DELIVREE">Délivrée</SelectItem>
                 </SelectContent>
               </Select>
             </div>

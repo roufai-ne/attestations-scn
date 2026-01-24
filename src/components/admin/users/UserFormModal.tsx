@@ -1,30 +1,61 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { Role } from '@prisma/client';
+
+interface User {
+  id: string;
+  email: string;
+  nom: string;
+  prenom: string;
+  role: Role;
+  actif: boolean;
+}
 
 interface UserFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user?: any;
+  user?: User | null;
   onSuccess: () => void;
 }
 
+const initialFormData = {
+  email: '',
+  nom: '',
+  prenom: '',
+  role: 'AGENT' as Role,
+  password: '',
+  actif: true,
+};
+
 export function UserFormModal({ open, onOpenChange, user, onSuccess }: UserFormModalProps) {
-  const [formData, setFormData] = useState({
-    email: user?.email || '',
-    nom: user?.nom || '',
-    prenom: user?.prenom || '',
-    role: user?.role || 'AGENT',
-    password: '',
-    actif: user?.actif ?? true,
-  });
+  const [formData, setFormData] = useState(initialFormData);
   const [loading, setLoading] = useState(false);
+
+  // Mettre à jour le formulaire quand l'utilisateur change ou que le modal s'ouvre
+  useEffect(() => {
+    if (open) {
+      if (user) {
+        setFormData({
+          email: user.email,
+          nom: user.nom,
+          prenom: user.prenom,
+          role: user.role,
+          password: '',
+          actif: user.actif,
+        });
+      } else {
+        setFormData(initialFormData);
+      }
+    }
+  }, [open, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +112,7 @@ export function UserFormModal({ open, onOpenChange, user, onSuccess }: UserFormM
           </div>
           <div>
             <Label>Rôle</Label>
-            <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
+            <Select value={formData.role} onValueChange={(value: Role) => setFormData({...formData, role: value})}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="SAISIE">Agent de saisie</SelectItem>
@@ -97,7 +128,21 @@ export function UserFormModal({ open, onOpenChange, user, onSuccess }: UserFormM
               <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required minLength={8} />
             </div>
           )}
-          <div className="flex justify-end gap-2">
+          {user && (
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label>Compte actif</Label>
+                <p className="text-sm text-gray-500">
+                  Désactiver le compte empêche l'utilisateur de se connecter
+                </p>
+              </div>
+              <Switch
+                checked={formData.actif}
+                onCheckedChange={(checked) => setFormData({...formData, actif: checked})}
+              />
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
             <Button type="submit" disabled={loading}>{loading ? 'En cours...' : 'Enregistrer'}</Button>
           </div>

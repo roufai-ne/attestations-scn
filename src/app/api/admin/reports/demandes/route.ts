@@ -51,7 +51,9 @@ export async function GET(request: NextRequest) {
 
     if (promotion) {
       where.appele = {
-        promotion: promotion,
+        is: {
+          promotion: promotion,
+        },
       };
     }
 

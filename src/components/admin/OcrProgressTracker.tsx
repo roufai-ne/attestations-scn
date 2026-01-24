@@ -36,7 +36,7 @@ export function OcrProgressTracker({ arreteId, onComplete, onError }: OcrProgres
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let intervalId: NodeJS.Timeout | null = null;
 
     const checkStatus = async () => {
       try {
@@ -58,13 +58,13 @@ export function OcrProgressTracker({ arreteId, onComplete, onError }: OcrProgres
         // Gérer les états terminaux
         if (data.state === 'completed') {
           setIsComplete(true);
-          clearInterval(intervalId);
+          if (intervalId) clearInterval(intervalId);
           if (onComplete) {
             setTimeout(() => onComplete(), 1000);
           }
         } else if (data.state === 'failed') {
           setError(data.failedReason || 'Erreur inconnue');
-          clearInterval(intervalId);
+          if (intervalId) clearInterval(intervalId);
           if (onError) {
             onError(data.failedReason || 'Erreur inconnue');
           }
@@ -72,7 +72,7 @@ export function OcrProgressTracker({ arreteId, onComplete, onError }: OcrProgres
       } catch (err) {
         console.error('Erreur lors de la vérification du statut:', err);
         setError('Impossible de vérifier le statut');
-        clearInterval(intervalId);
+        if (intervalId) clearInterval(intervalId);
       }
     };
 

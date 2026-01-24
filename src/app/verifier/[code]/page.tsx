@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -184,12 +184,12 @@ export default async function VerifierCodePage({
 
                 {/* Retour */}
                 <div className="mt-8 text-center">
-                    <a
+                    <Link
                         href="/verifier"
                         className="text-blue-600 hover:text-blue-700 font-medium"
                     >
                         ← Vérifier une autre attestation
-                    </a>
+                    </Link>
                 </div>
             </div>
         </div>

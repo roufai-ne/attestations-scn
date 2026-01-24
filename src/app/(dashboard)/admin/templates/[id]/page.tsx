@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { LoadingState } from '@/components/shared/LoadingState';
 import {
     Edit,
@@ -117,14 +116,6 @@ export default function TemplateViewPage() {
 
     return (
         <div className="container mx-auto p-6 max-w-5xl">
-            <Breadcrumbs
-                items={[
-                    { label: 'Administration', href: '/admin/dashboard' },
-                    { label: 'Templates', href: '/admin/templates' },
-                    { label: template.nom },
-                ]}
-            />
-
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" onClick={() => router.back()}>

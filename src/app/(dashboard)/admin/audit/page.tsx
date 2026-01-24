@@ -62,9 +62,9 @@ export default function AuditPage() {
         limit: pagination.limit.toString(),
       });
 
-      // Ajouter les filtres non vides
+      // Ajouter les filtres non vides (exclure les valeurs 'ALL')
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
+        if (value && value !== 'ALL') {
           params.append(key, value);
         }
       });
@@ -96,9 +96,9 @@ export default function AuditPage() {
     try {
       const params = new URLSearchParams({ export: 'csv' });
 
-      // Ajouter les filtres non vides
+      // Ajouter les filtres non vides (exclure les valeurs 'ALL')
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
+        if (value && value !== 'ALL') {
           params.append(key, value);
         }
       });

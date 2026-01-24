@@ -125,6 +125,8 @@ export class ExcelService {
   static async exportAgentsReport(agents: any[]): Promise<Buffer> {
     const columns: ExportColumn[] = [
       { header: 'Agent', key: 'nom', width: 30 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Date inscription', key: 'dateInscription', width: 18 },
       { header: 'Demandes traitées', key: 'demandesTraitees', width: 20 },
       { header: 'Validées', key: 'validees', width: 15 },
       { header: 'Rejetées', key: 'rejetees', width: 15 },
@@ -134,6 +136,8 @@ export class ExcelService {
 
     const data = agents.map((a) => ({
       nom: `${a.prenom} ${a.nom}`,
+      email: a.email || '',
+      dateInscription: a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '',
       demandesTraitees: a.stats?.total || 0,
       validees: a.stats?.validees || 0,
       rejetees: a.stats?.rejetees || 0,

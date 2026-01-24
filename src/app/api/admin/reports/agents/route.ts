@@ -72,6 +72,8 @@ export async function GET(request: NextRequest) {
         id: agent.id,
         nom: agent.nom,
         prenom: agent.prenom,
+        email: agent.email,
+        createdAt: agent.createdAt,
         stats: {
           total,
           validees,

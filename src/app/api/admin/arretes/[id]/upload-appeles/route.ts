@@ -4,6 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { excelParserService } from '@/lib/services/excel-parser.service';
 import { writeFile, unlink } from 'fs/promises';
 import path from 'path';
+import { sanitizeFilename } from '@/lib/security/sanitize';
+
+// Taille maximale de fichier: 5 Mo
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 /**
  * POST /api/admin/arretes/[id]/upload-appeles
@@ -81,11 +85,20 @@ export async function POST(
             );
         }
 
+        // Vérifier la taille du fichier
+        if (file.size > MAX_FILE_SIZE) {
+            return NextResponse.json(
+                { error: 'Fichier trop volumineux. Taille maximale: 5 Mo' },
+                { status: 413 }
+            );
+        }
+
         console.log(`📤 Upload de ${file.name} pour l'arrêté ${arrete.numero}`);
 
-        // Sauvegarder temporairement le fichier
+        // Sauvegarder temporairement le fichier avec nom sanitisé
         const buffer = Buffer.from(await file.arrayBuffer());
-        const tempFilePath = path.join(process.cwd(), 'public', 'uploads', 'temp', `${Date.now()}-${file.name}`);
+        const safeFilename = sanitizeFilename(file.name);
+        const tempFilePath = path.join(process.cwd(), 'public', 'uploads', 'temp', `${Date.now()}-${safeFilename}`);
 
         await writeFile(tempFilePath, buffer);
 

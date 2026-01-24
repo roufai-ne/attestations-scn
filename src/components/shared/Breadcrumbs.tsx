@@ -22,20 +22,34 @@ function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
 
     // Mapping des segments vers des labels lisibles
     const labelMap: Record<string, string> = {
+        // Rôles/sections principales
         'agent': 'Agent',
         'directeur': 'Directeur',
         'admin': 'Administration',
+        'saisie': 'Saisie',
+        // Pages principales
+        'dashboard': 'Tableau de bord',
         'demandes': 'Demandes',
         'attestations': 'Attestations',
         'arretes': 'Arrêtés',
         'utilisateurs': 'Utilisateurs',
         'rapports': 'Rapports',
         'audit': 'Journal d\'audit',
+        'templates': 'Templates',
+        'configuration': 'Configuration',
+        'notifications': 'Notifications',
+        'assets': 'Ressources',
+        // Actions
+        'nouvelle': 'Nouvelle demande',
         'nouvelle-demande': 'Nouvelle demande',
+        'modifier': 'Modifier',
+        'edit': 'Modifier',
         'signature': 'Signature',
-        'stats': 'Statistiques',
+        'changer-pin': 'Changer PIN',
+        // Profil et paramètres
         'profil': 'Mon profil',
         'parametres': 'Paramètres',
+        'stats': 'Statistiques',
     };
 
     const breadcrumbs: BreadcrumbItem[] = [];

@@ -159,7 +159,8 @@ async function testRateLimit(config: RateLimitConfig): Promise<TestResult> {
       // Petit délai pour éviter surcharge
       await new Promise((resolve) => setTimeout(resolve, 50));
     } catch (error) {
-      console.log(`   ⚠️  Requête ${i}: Erreur réseau - ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      console.log(`   ⚠️  Requête ${i}: Erreur réseau - ${message}`);
     }
   }
 
@@ -336,7 +337,8 @@ async function main() {
       console.log('   ⏳ Pause 3s avant prochain test...');
       await new Promise((resolve) => setTimeout(resolve, 3000));
     } catch (error) {
-      console.error(`❌ Erreur test ${config.endpoint}:`, error.message);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`❌ Erreur test ${config.endpoint}:`, message);
     }
   }
 

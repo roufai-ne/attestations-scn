@@ -103,12 +103,16 @@ export function AuditLogTable({ logs, pagination, onPageChange }: AuditLogTableP
               >
                 <TableCell className="font-medium">{formatDate(log.createdAt)}</TableCell>
                 <TableCell>
-                  <div>
-                    <p className="font-medium">
-                      {log.user.prenom} {log.user.nom}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{log.user.email}</p>
-                  </div>
+                  {log.user ? (
+                    <div>
+                      <p className="font-medium">
+                        {log.user.prenom} {log.user.nom}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{log.user.email}</p>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground italic">Utilisateur supprimé</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge className={getActionColor(log.action)}>{getActionLabel(log.action)}</Badge>

@@ -1,6 +1,7 @@
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { Toaster } from '@/components/ui/toaster';
+import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 
 export default function DashboardLayout({
     children,
@@ -16,6 +17,7 @@ export default function DashboardLayout({
 
                 <main className="p-4 md:p-6 lg:p-8">
                     <div className="mx-auto max-w-7xl">
+                        <Breadcrumbs />
                         {children}
                     </div>
                 </main>

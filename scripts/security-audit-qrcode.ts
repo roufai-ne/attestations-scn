@@ -143,16 +143,24 @@ async function testFalsificationAttempts() {
   };
 
   try {
-    // Vérifier données légitimes
-    const valid1 = await qrService.verifyQRCode(legitimateData.numero, {
-      id: legitimateData.id,
-      numero: legitimateData.numero,
-      nom: legitimateData.nom,
-      prenom: legitimateData.prenom,
-      dateNaissance: legitimateData.dateNaissance,
-    });
+    // Générer les données QR signées pour le test
+    const qrDataJson = qrService.generateQRData(legitimateData);
+    const parsedData = JSON.parse(qrDataJson);
 
-    if (valid1) {
+    // Vérifier données légitimes avec validateQRCode
+    const validation1 = qrService.validateQRCode(
+      {
+        id: legitimateData.id,
+        numero: legitimateData.numero,
+        nom: legitimateData.nom,
+        prenom: legitimateData.prenom,
+        dateNaissance: legitimateData.dateNaissance,
+      },
+      parsedData.signature,
+      parsedData.timestamp
+    );
+
+    if (validation1.valid) {
       logResult({
         test: 'Données légitimes',
         status: 'PASS',
@@ -162,20 +170,24 @@ async function testFalsificationAttempts() {
       logResult({
         test: 'Données légitimes',
         status: 'FAIL',
-        message: 'QR légitime rejeté!',
+        message: `QR légitime rejeté! Raison: ${validation1.reason}`,
       });
     }
 
-    // Tenter falsification
-    const valid2 = await qrService.verifyQRCode(tamperedData.numero, {
-      id: tamperedData.id,
-      numero: tamperedData.numero,
-      nom: tamperedData.nom, // Nom modifié
-      prenom: tamperedData.prenom,
-      dateNaissance: tamperedData.dateNaissance,
-    });
+    // Tenter falsification avec données modifiées mais même signature
+    const validation2 = qrService.validateQRCode(
+      {
+        id: tamperedData.id,
+        numero: tamperedData.numero,
+        nom: tamperedData.nom, // Nom modifié
+        prenom: tamperedData.prenom,
+        dateNaissance: tamperedData.dateNaissance,
+      },
+      parsedData.signature, // Utiliser la signature des données originales
+      parsedData.timestamp
+    );
 
-    if (!valid2) {
+    if (!validation2.valid) {
       logResult({
         test: 'Falsification nom',
         status: 'PASS',

@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { LoadingState } from '@/components/shared/LoadingState';
 import {
     FileText,
@@ -171,18 +170,6 @@ export default function TemplatesPage() {
 
     return (
         <div className="container mx-auto p-6">
-            <div className="flex items-center gap-4 mb-4">
-                <Button variant="ghost" size="icon" onClick={() => router.push('/admin/dashboard')}>
-                    <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <Breadcrumbs
-                    items={[
-                        { label: 'Administration', href: '/admin/dashboard' },
-                        { label: 'Templates d\'attestation' },
-                    ]}
-                />
-            </div>
-
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-2xl font-bold">Templates d'attestation</h1>

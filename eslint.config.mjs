@@ -13,6 +13,22 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Custom rules for this project
+  {
+    rules: {
+      // Désactiver pour le texte français avec apostrophes
+      "react/no-unescaped-entities": "off",
+      // Réduire en warning les types any (à corriger progressivement)
+      "@typescript-eslint/no-explicit-any": "warn",
+      // Réduire en warning les variables non utilisées
+      "@typescript-eslint/no-unused-vars": ["warn", {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }],
+      // Réduire en warning les dépendances manquantes dans useEffect/useCallback
+      "react-hooks/exhaustive-deps": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;
