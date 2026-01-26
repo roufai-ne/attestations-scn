@@ -2,13 +2,27 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { HomeHeader, HeroSection, ServicesSection, HomeFooter } from '@/components/home';
 
+// Mapping des rôles vers les dashboards
+const ROLE_DASHBOARDS: Record<string, string> = {
+  ADMIN: '/admin/dashboard',
+  DIRECTEUR: '/directeur/dashboard',
+  AGENT: '/agent/dashboard',
+  SAISIE: '/saisie/dashboard',
+};
+
 export default function HomePage() {
+  const { data: session, status } = useSession();
   const [assets, setAssets] = useState<{
     logoUrl?: string;
     heroImageUrl?: string;
   }>({});
+
+  const isLoggedIn = status === 'authenticated' && session?.user;
+  const userRole = session?.user?.role || 'AGENT';
+  const dashboardUrl = ROLE_DASHBOARDS[userRole] || '/agent/dashboard';
 
   useEffect(() => {
     // Fetch custom assets from API
@@ -105,12 +119,21 @@ export default function HomePage() {
               de manière simple et sécurisée.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/login"
-                className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-[var(--accent-orange)] hover:bg-[var(--accent-orange-dark)] text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
-                Connexion
-              </Link>
+              {isLoggedIn ? (
+                <Link
+                  href={dashboardUrl}
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-[var(--accent-orange)] hover:bg-[var(--accent-orange-dark)] text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Mon tableau de bord
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-[var(--accent-orange)] hover:bg-[var(--accent-orange-dark)] text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Connexion
+                </Link>
+              )}
               <Link
                 href="/verifier"
                 className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-all duration-200 border border-white/30"
