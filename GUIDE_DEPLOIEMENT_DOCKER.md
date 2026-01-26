@@ -1,309 +1,344 @@
-# Guide de Déploiement Docker - Attestations SCN
-**Version:** 2.0.0  
-**Date:** 22 janvier 2026
+# Guide de Déploiement - Attestations Service Civique National
+
+**Plateforme cible :** Ubuntu 22.04/24.04 LTS
+**Prérequis :** Docker et Docker Compose installés
+**Version :** 2.1.0 | Janvier 2026
 
 ---
 
-## 📋 Prérequis
+## Table des matières
 
-### Logiciels requis
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- Git
-- OpenSSL (pour génération secrets)
-
-### Configuration serveur minimale
-- **Développement:** 2 CPU, 4GB RAM, 20GB disque
-- **Production:** 4 CPU, 8GB RAM, 50GB disque
-
----
-
-## 🔐 Étape 1: Génération des Secrets
-
-### 1.1 NEXTAUTH_SECRET (Obligatoire)
-
-Générez un secret fort de 32+ caractères :
-
-```bash
-# Linux/Mac
-openssl rand -base64 32
-
-# Windows PowerShell
-$bytes = New-Object byte[] 32
-[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-[Convert]::ToBase64String($bytes)
-
-# Ou en ligne
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-```
-
-**Exemple de sortie:**
-```
-Kj8mP2xQwE7vR5tY9nU3bC6dF1gH4iJ0
-```
-
-### 1.2 QR_SECRET_KEY (Recommandé)
-
-Même processus que NEXTAUTH_SECRET :
-
-```bash
-openssl rand -base64 32
-```
-
-### 1.3 Mots de passe Base de données
-
-**Production uniquement** - Générez un mot de passe fort :
-
-```bash
-# Mot de passe aléatoire 24 caractères
-openssl rand -base64 18
-
-# Ou avec symboles
-openssl rand -base64 32 | tr -d "=+/" | cut -c1-24
-```
-
-### 1.4 Mot de passe Redis (Optionnel mais recommandé)
-
-```bash
-openssl rand -base64 18
-```
+1. [Prérequis](#1-prérequis)
+2. [Clonage du projet](#2-clonage-du-projet)
+3. [Configuration des variables d'environnement](#3-configuration-des-variables-denvironnement)
+4. [Configuration SSL](#4-configuration-ssl)
+5. [Déploiement](#5-déploiement)
+6. [Post-installation](#6-post-installation)
+7. [Maintenance](#7-maintenance)
+8. [Sauvegardes](#8-sauvegardes)
+9. [Dépannage](#9-dépannage)
 
 ---
 
-## ⚙️ Étape 2: Configuration
+## 1. Prérequis
 
-### 2.1 Créer le fichier .env
+### 1.1 Vérifier Docker et Docker Compose
 
 ```bash
-# Copier le template
+# Vérifier que Docker est installé
+docker --version
+# Attendu: Docker version 24.x ou supérieur
+
+# Vérifier Docker Compose
+docker compose version
+# Attendu: Docker Compose version v2.x ou supérieur
+```
+
+### 1.2 Configuration serveur recommandée
+
+| Ressource | Minimum | Recommandé |
+|-----------|---------|------------|
+| CPU | 2 vCPU | 4 vCPU |
+| RAM | 4 Go | 8 Go |
+| Disque | 30 Go SSD | 50 Go SSD |
+| OS | Ubuntu 22.04 LTS | Ubuntu 24.04 LTS |
+
+### 1.3 Ports requis
+
+Avec Cloudflare Tunnel, vous n'avez **pas besoin d'ouvrir les ports 80/443** car le tunnel crée une connexion sortante sécurisée.
+
+```bash
+# Ouvrir uniquement le port SSH (UFW)
+sudo ufw allow 22/tcp    # SSH
+sudo ufw enable
+sudo ufw status
+```
+
+> **Note :** Le port 3000 reste accessible uniquement en local. Cloudflare Tunnel s'y connecte depuis l'intérieur du réseau.
+
+---
+
+## 2. Clonage du projet
+
+### 2.1 Se connecter au serveur
+
+```bash
+ssh utilisateur@votre-serveur-ip
+```
+
+### 2.2 Créer le répertoire de l'application
+
+```bash
+sudo mkdir -p /opt/attestations-scn
+sudo chown $USER:$USER /opt/attestations-scn
+cd /opt/attestations-scn
+```
+
+### 2.3 Cloner le dépôt Git
+
+```bash
+git clone https://github.com/votre-organisation/attestations-scn.git .
+```
+
+> **Note :** Remplacez l'URL par celle de votre dépôt Git.
+
+### 2.4 Vérifier la structure
+
+```bash
+ls -la
+# Vous devez voir : Dockerfile, docker-compose.prod.yml, package.json, etc.
+```
+
+---
+
+## 3. Configuration des variables d'environnement
+
+### 3.1 Créer le fichier .env
+
+```bash
 cp .env.production.example .env
-
-# Éditer le fichier
-nano .env  # ou vim, code, etc.
 ```
 
-### 2.2 Variables essentielles
+### 3.2 Générer les secrets
 
-Remplissez au minimum ces variables :
+```bash
+# Générer NEXTAUTH_SECRET (obligatoire - 32 caractères min)
+echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)"
+
+# Générer QR_SECRET_KEY (obligatoire - pour la signature des QR codes)
+echo "QR_SECRET_KEY=$(openssl rand -hex 32)"
+
+# Générer le mot de passe PostgreSQL
+echo "POSTGRES_PASSWORD=$(openssl rand -base64 18 | tr -d '=+/')"
+
+# Générer le mot de passe Redis
+echo "REDIS_PASSWORD=$(openssl rand -base64 18 | tr -d '=+/')"
+```
+
+### 3.3 Éditer le fichier .env
+
+```bash
+nano .env
+```
+
+### 3.4 Variables obligatoires à configurer
 
 ```env
-# Application
+# ===== APPLICATION =====
 NODE_ENV=production
 NEXTAUTH_URL=https://attestations.votre-domaine.ne
-NEXTAUTH_SECRET=<votre_secret_généré>
+NEXTAUTH_SECRET=VOTRE_SECRET_GENERE_ICI
 
-# Base de données
-DATABASE_URL=postgresql://postgres:<mot_de_passe>@db:5432/attestations_db
-POSTGRES_PASSWORD=<mot_de_passe_fort>
+# ===== BASE DE DONNÉES =====
+DATABASE_URL=postgresql://postgres:VOTRE_MOT_DE_PASSE@db:5432/attestations_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=VOTRE_MOT_DE_PASSE
+POSTGRES_DB=attestations_db
 
-# Redis
-REDIS_URL=redis://:mot_de_passe@redis:6379
-REDIS_PASSWORD=<mot_de_passe_redis>
+# ===== REDIS =====
+REDIS_URL=redis://:VOTRE_MOT_DE_PASSE_REDIS@redis:6379
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=VOTRE_MOT_DE_PASSE_REDIS
 
-# Email SMTP
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=noreply@votre-domaine.ne
-SMTP_PASS=<mot_de_passe_smtp>
+# ===== SÉCURITÉ QR CODE =====
+QR_SECRET_KEY=VOTRE_CLE_SECRETE_HEX_ICI
 
-# QR Code
-QR_SECRET_KEY=<votre_secret_généré>
+# ===== HCAPTCHA (Recommandé en production) =====
+NEXT_PUBLIC_HCAPTCHA_SITE_KEY=votre_site_key
+HCAPTCHA_SECRET_KEY=votre_secret_key
 ```
 
-### 2.3 Variables optionnelles
+### 3.5 Variables optionnelles (notifications)
 
 ```env
-# SMS (Twilio)
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=xxxxxxxxxxxxx
-TWILIO_PHONE_NUMBER=+242XXXXXXXXX
+# ===== EMAIL SMTP =====
+EMAIL_PROVIDER=smtp
+SMTP_HOST=smtp.votre-fournisseur.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=noreply@votre-domaine.ne
+SMTP_PASS=votre_mot_de_passe_smtp
+SMTP_FROM=Service Civique National <noreply@votre-domaine.ne>
 
-# WhatsApp Business
-WHATSAPP_PHONE_NUMBER_ID=xxxxxxxxxxxxx
-WHATSAPP_ACCESS_TOKEN=xxxxxxxxxxxxx
+# ===== OU EMAIL BREVO =====
+# EMAIL_PROVIDER=brevo
+# BREVO_API_KEY=votre_api_key
+# BREVO_SENDER_EMAIL=noreply@votre-domaine.ne
+# BREVO_SENDER_NAME=Service Civique National
 ```
+
+### 3.6 Sauvegarder et quitter
+
+Appuyez sur `Ctrl+X`, puis `Y`, puis `Entrée`.
 
 ---
 
-## 🔒 Étape 3: Configuration SSL (Production)
+## 4. Configuration avec Cloudflare Tunnel
 
-### Option A: Certificats auto-signés (développement/test)
+Votre réseau utilise Cloudflare Tunnel pour gérer le SSL et l'exposition de l'application. Cela simplifie le déploiement car :
+- **Pas besoin de certificats SSL locaux** - Cloudflare gère le SSL
+- **Pas besoin d'ouvrir les ports 80/443** - Le tunnel crée une connexion sortante
+- **Pas besoin de Nginx** - Cloudflare route directement vers l'application
 
-```bash
-cd nginx/ssl
+### 4.1 Vérifier que le tunnel est configuré
 
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout privkey.pem \
-  -out fullchain.pem \
-  -subj "/C=NE/ST=Niamey/L=Niamey/O=SCN/CN=attestations.local"
+Assurez-vous que votre Cloudflare Tunnel est configuré pour pointer vers :
+
+```
+http://localhost:3000
 ```
 
-### Option B: Let's Encrypt (production)
+ou l'IP interne de votre serveur :
 
-#### 1. Installer Certbot
-
-```bash
-# Ubuntu/Debian
-sudo apt install certbot
-
-# CentOS/RHEL
-sudo yum install certbot
+```
+http://192.168.x.x:3000
 ```
 
-#### 2. Obtenir le certificat
+### 4.2 Configuration dans le dashboard Cloudflare
+
+1. Connectez-vous à [Cloudflare Zero Trust](https://one.dash.cloudflare.com/)
+2. Allez dans **Access > Tunnels**
+3. Sélectionnez votre tunnel
+4. Ajoutez un **Public Hostname** :
+   - **Subdomain** : `attestations` (ou selon votre choix)
+   - **Domain** : `votre-domaine.ne`
+   - **Service Type** : `HTTP`
+   - **URL** : `localhost:3000`
+
+### 4.3 Mettre à jour le fichier .env
+
+Assurez-vous que `NEXTAUTH_URL` correspond à l'URL publique via Cloudflare :
 
 ```bash
-# Méthode standalone (arrêter nginx d'abord)
-sudo certbot certonly --standalone \
-  -d attestations.votre-domaine.ne \
-  --email admin@votre-domaine.ne \
-  --agree-tos
-
-# Ou méthode webroot (nginx en cours)
-sudo certbot certonly --webroot \
-  -w /var/www/certbot \
-  -d attestations.votre-domaine.ne \
-  --email admin@votre-domaine.ne
+nano .env
 ```
 
-#### 3. Copier les certificats
-
-```bash
-sudo cp /etc/letsencrypt/live/attestations.votre-domaine.ne/fullchain.pem nginx/ssl/
-sudo cp /etc/letsencrypt/live/attestations.votre-domaine.ne/privkey.pem nginx/ssl/
-sudo chown $USER:$USER nginx/ssl/*.pem
+```env
+NEXTAUTH_URL=https://attestations.votre-domaine.ne
 ```
 
-#### 4. Auto-renouvellement
-
-```bash
-# Ajouter au crontab
-sudo crontab -e
-
-# Ajouter cette ligne (renouvellement tous les lundis à 3h)
-0 3 * * 1 certbot renew --quiet && cp /etc/letsencrypt/live/*/fullchain.pem /path/to/nginx/ssl/ && cp /etc/letsencrypt/live/*/privkey.pem /path/to/nginx/ssl/ && docker compose -f /path/to/docker-compose.prod.yml restart nginx
-```
+> **Important :** L'URL doit être en HTTPS car Cloudflare gère le SSL automatiquement.
 
 ---
 
-## 🚀 Étape 4: Déploiement
+## 5. Déploiement
 
-### 4.1 Build des images
+### 5.1 Construire les images Docker
 
 ```bash
-# Production
 docker compose -f docker-compose.prod.yml build --no-cache
-
-# Ou utiliser le script
-chmod +x scripts/deploy.sh
-./scripts/deploy.sh
 ```
 
-### 4.2 Démarrage
+> **Durée estimée :** 5-10 minutes selon la connexion.
 
-#### Sans Nginx (accès direct port 3000)
+### 5.2 Démarrer les services de base
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d
+# Démarrer PostgreSQL et Redis d'abord
+docker compose -f docker-compose.prod.yml up -d db redis
+
+# Attendre que PostgreSQL soit prêt (30 secondes)
+echo "Attente du démarrage de PostgreSQL..."
+sleep 30
+
+# Vérifier que PostgreSQL est prêt
+docker compose -f docker-compose.prod.yml exec db pg_isready -U postgres
 ```
 
-#### Avec Nginx (ports 80/443)
+### 5.3 Exécuter les migrations de base de données
 
 ```bash
-docker compose -f docker-compose.prod.yml --profile with-nginx up -d
+docker compose -f docker-compose.prod.yml run --rm app npx prisma migrate deploy
 ```
 
-### 4.3 Vérification
+### 5.4 Créer l'utilisateur administrateur initial
 
 ```bash
-# Statut des conteneurs
+docker compose -f docker-compose.prod.yml run --rm app npx prisma db seed
+```
+
+> **Identifiants par défaut créés :**
+> - Email : `admin@scn.ne`
+> - Mot de passe : `Admin123!`
+>
+> ⚠️ **Changez ce mot de passe immédiatement après la première connexion !**
+
+### 5.5 Démarrer l'application
+
+```bash
+# Démarrer l'application (Cloudflare Tunnel se connecte au port 3000)
+docker compose -f docker-compose.prod.yml up -d app
+```
+
+> **Note :** Avec Cloudflare Tunnel, vous n'avez pas besoin de Nginx. Le tunnel route directement vers le port 3000.
+
+### 5.6 Vérifier le déploiement
+
+```bash
+# Vérifier que tous les conteneurs sont en cours d'exécution
 docker compose -f docker-compose.prod.yml ps
 
-# Logs de l'application
-docker compose -f docker-compose.prod.yml logs -f app
+# Résultat attendu : tous les services en "Up" ou "running"
+```
 
-# Health check
+```bash
+# Tester l'API health localement
 curl http://localhost:3000/api/health
-# ou
+
+# Tester via l'URL publique Cloudflare
 curl https://attestations.votre-domaine.ne/api/health
 ```
 
-**Réponse attendue:**
+**Réponse attendue :**
 ```json
-{
-  "status": "ok",
-  "timestamp": "2026-01-22T10:30:00.000Z",
-  "database": "connected",
-  "redis": "connected"
-}
+{"status":"ok","timestamp":"...","database":"connected","redis":"connected"}
 ```
 
 ---
 
-## 🔄 Étape 5: Migrations & Seed
+## 6. Post-installation
 
-### 5.1 Migrations automatiques
+### 6.1 Accéder à l'application
 
-Les migrations Prisma sont appliquées automatiquement au démarrage via `docker-entrypoint.sh`.
+Ouvrez votre navigateur et accédez à :
 
-Pour vérifier :
-
-```bash
-docker compose -f docker-compose.prod.yml logs app | grep "migrations"
+```
+https://attestations.votre-domaine.ne
 ```
 
-### 5.2 Seed manuel (première installation)
+### 6.2 Première connexion
 
-```bash
-# Créer le compte admin initial
-docker compose -f docker-compose.prod.yml exec app npx prisma db seed
-```
+1. Cliquez sur **Connexion**
+2. Entrez les identifiants admin :
+   - Email : `admin@scn.ne`
+   - Mot de passe : `Admin123!`
+3. **Changez immédiatement le mot de passe** dans Profil > Sécurité
 
-### 5.3 Rollback d'une migration (si nécessaire)
+### 6.3 Configurer hCaptcha (Recommandé)
 
-```bash
-# Lister les migrations
-docker compose -f docker-compose.prod.yml exec app npx prisma migrate status
+1. Créez un compte sur [hCaptcha Dashboard](https://dashboard.hcaptcha.com)
+2. Créez un nouveau site et obtenez vos clés
+3. Ajoutez les clés dans `.env` :
+   ```env
+   NEXT_PUBLIC_HCAPTCHA_SITE_KEY=votre_site_key
+   HCAPTCHA_SECRET_KEY=votre_secret_key
+   ```
+4. Redémarrez l'application :
+   ```bash
+   docker compose -f docker-compose.prod.yml restart app
+   ```
 
-# Rollback (attention: perte de données)
-docker compose -f docker-compose.prod.yml exec app npx prisma migrate resolve --rolled-back <migration_name>
-```
+### 6.4 Configurer les notifications email
+
+1. Allez dans **Administration > Configuration > Notifications**
+2. Testez l'envoi d'email avec le bouton "Tester"
 
 ---
 
-## 📦 Étape 6: Sauvegarde & Restauration
+## 7. Maintenance
 
-### 6.1 Backup automatique
-
-```bash
-# Créer un cron job
-crontab -e
-
-# Ajouter (backup quotidien à 2h)
-0 2 * * * /path/to/scripts/backup.sh
-```
-
-### 6.2 Backup manuel
-
-```bash
-chmod +x scripts/backup.sh
-./scripts/backup.sh
-```
-
-**Les backups sont stockés dans:** `./backups/attestations_YYYYMMDD_HHMMSS.sql.gz`
-
-### 6.3 Restauration
-
-```bash
-chmod +x scripts/restore.sh
-./scripts/restore.sh backups/attestations_20260122_020000.sql.gz
-```
-
----
-
-## 🔍 Étape 7: Monitoring & Logs
-
-### 7.1 Logs en temps réel
+### 7.1 Voir les logs en temps réel
 
 ```bash
 # Tous les services
@@ -314,72 +349,33 @@ docker compose -f docker-compose.prod.yml logs -f app
 
 # Base de données
 docker compose -f docker-compose.prod.yml logs -f db
-
-# Redis
-docker compose -f docker-compose.prod.yml logs -f redis
 ```
 
-### 7.2 Statistiques des conteneurs
+### 7.2 Mettre à jour l'application
 
 ```bash
-# Utilisation CPU/RAM
-docker stats
-
-# Espace disque
-docker system df
-```
-
-### 7.3 Health checks
-
-```bash
-# Application
-curl http://localhost:3000/api/health
-
-# PostgreSQL
-docker compose -f docker-compose.prod.yml exec db pg_isready -U postgres
-
-# Redis
-docker compose -f docker-compose.prod.yml exec redis redis-cli ping
-```
-
----
-
-## 🛠️ Étape 8: Maintenance
-
-### 8.1 Mise à jour de l'application
-
-```bash
-# 1. Pull des nouvelles modifications
+# 1. Récupérer les dernières modifications
+cd /opt/attestations-scn
 git pull origin main
 
-# 2. Rebuild
-docker compose -f docker-compose.prod.yml build --no-cache
+# 2. Reconstruire l'image de l'application
+docker compose -f docker-compose.prod.yml build --no-cache app
 
-# 3. Redémarrage avec zero-downtime
-docker compose -f docker-compose.prod.yml up -d --no-deps --build app
+# 3. Appliquer les nouvelles migrations (si nécessaire)
+docker compose -f docker-compose.prod.yml run --rm app npx prisma migrate deploy
 
-# 4. Vérification
+# 4. Redémarrer l'application
+docker compose -f docker-compose.prod.yml up -d --no-deps app
+
+# 5. Vérifier
+docker compose -f docker-compose.prod.yml ps
 curl http://localhost:3000/api/health
 ```
 
-### 8.2 Nettoyage Docker
+### 7.3 Redémarrer les services
 
 ```bash
-# Images inutilisées
-docker image prune -f
-
-# Volumes orphelins (ATTENTION: vérifie avant)
-docker volume ls -qf dangling=true
-docker volume prune -f
-
-# Système complet (ATTENTION: supprime tout ce qui n'est pas utilisé)
-docker system prune -a --volumes
-```
-
-### 8.3 Redémarrage des services
-
-```bash
-# Redémarrer l'application
+# Redémarrer uniquement l'application
 docker compose -f docker-compose.prod.yml restart app
 
 # Redémarrer tous les services
@@ -388,104 +384,183 @@ docker compose -f docker-compose.prod.yml restart
 # Arrêt complet
 docker compose -f docker-compose.prod.yml down
 
-# Redémarrage complet
+# Démarrage complet
 docker compose -f docker-compose.prod.yml up -d
+```
+
+### 7.4 Nettoyer Docker
+
+```bash
+# Supprimer les images inutilisées
+docker image prune -f
+
+# Supprimer les conteneurs arrêtés
+docker container prune -f
+
+# Nettoyer le système (attention: ne supprime pas les volumes)
+docker system prune -f
 ```
 
 ---
 
-## 🔧 Dépannage
+## 8. Sauvegardes
 
-### Problème: L'application ne démarre pas
+### 8.1 Sauvegarde manuelle
+
+```bash
+# Créer le dossier de sauvegardes
+mkdir -p /opt/attestations-scn/backups
+
+# Sauvegarder la base de données
+docker compose -f docker-compose.prod.yml exec -T db \
+  pg_dump -U postgres attestations_db | gzip > \
+  /opt/attestations-scn/backups/db_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# Sauvegarder les fichiers uploadés
+tar -czf /opt/attestations-scn/backups/uploads_$(date +%Y%m%d_%H%M%S).tar.gz \
+  -C /var/lib/docker/volumes attestations-scn_uploads_data 2>/dev/null || \
+  echo "Volumes non trouvés, vérifiez le chemin"
+```
+
+### 8.2 Sauvegarde automatique quotidienne
+
+```bash
+# Créer le script de sauvegarde
+cat > /opt/attestations-scn/scripts/backup.sh << 'EOF'
+#!/bin/bash
+BACKUP_DIR="/opt/attestations-scn/backups"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# Créer le dossier si nécessaire
+mkdir -p $BACKUP_DIR
+
+# Sauvegarde PostgreSQL
+docker compose -f /opt/attestations-scn/docker-compose.prod.yml exec -T db \
+  pg_dump -U postgres attestations_db | gzip > "$BACKUP_DIR/db_$DATE.sql.gz"
+
+# Supprimer les sauvegardes de plus de 30 jours
+find $BACKUP_DIR -name "*.gz" -mtime +30 -delete
+
+echo "$(date): Sauvegarde terminée - db_$DATE.sql.gz" >> /var/log/attestations-backup.log
+EOF
+
+chmod +x /opt/attestations-scn/scripts/backup.sh
+
+# Ajouter au cron (sauvegarde quotidienne à 2h du matin)
+(crontab -l 2>/dev/null; echo "0 2 * * * /opt/attestations-scn/scripts/backup.sh") | crontab -
+```
+
+### 8.3 Restauration
+
+```bash
+# Restaurer une sauvegarde
+gunzip -c /opt/attestations-scn/backups/db_20260126_020000.sql.gz | \
+  docker compose -f docker-compose.prod.yml exec -T db \
+  psql -U postgres attestations_db
+```
+
+---
+
+## 9. Dépannage
+
+### 9.1 L'application ne démarre pas
 
 ```bash
 # Vérifier les logs
 docker compose -f docker-compose.prod.yml logs app
 
 # Vérifier les variables d'environnement
-docker compose -f docker-compose.prod.yml exec app env | grep DATABASE_URL
+docker compose -f docker-compose.prod.yml exec app env | grep -E "(DATABASE|NEXTAUTH|REDIS)"
 ```
 
-### Problème: Erreur de connexion base de données
+### 9.2 Erreur de connexion à la base de données
 
 ```bash
+# Vérifier que PostgreSQL fonctionne
+docker compose -f docker-compose.prod.yml exec db pg_isready -U postgres
+
 # Tester la connexion
 docker compose -f docker-compose.prod.yml exec db psql -U postgres -d attestations_db -c "SELECT 1"
-
-# Vérifier DATABASE_URL
-echo $DATABASE_URL
 ```
 
-### Problème: Redis non connecté
+### 9.3 Redis non connecté
 
 ```bash
-# Tester Redis
+# Vérifier Redis
 docker compose -f docker-compose.prod.yml exec redis redis-cli ping
-
-# Vérifier REDIS_URL
-docker compose -f docker-compose.prod.yml exec app env | grep REDIS
+# Réponse attendue: PONG
 ```
 
-### Problème: Certificats SSL invalides
+### 9.4 Problèmes avec Cloudflare Tunnel
 
 ```bash
-# Vérifier les certificats
-openssl x509 -in nginx/ssl/fullchain.pem -text -noout
+# Vérifier que l'application écoute sur le port 3000
+curl http://localhost:3000/api/health
 
-# Vérifier l'expiration
-openssl x509 -in nginx/ssl/fullchain.pem -noout -enddate
+# Vérifier les logs du tunnel (si installé localement via cloudflared)
+sudo journalctl -u cloudflared -f
+
+# Vérifier la connectivité depuis Cloudflare
+# Allez dans Cloudflare Dashboard > Zero Trust > Tunnels > Votre tunnel > Logs
 ```
 
-### Problème: Migrations échouent
+**Problèmes courants :**
+- **502 Bad Gateway** : L'application n'est pas démarrée ou ne répond pas sur le port 3000
+- **Tunnel offline** : Vérifiez que le service cloudflared est actif sur le serveur
+
+### 9.5 Réinitialiser complètement (⚠️ Perte de données)
 
 ```bash
-# Forcer la génération du client Prisma
-docker compose -f docker-compose.prod.yml exec app npx prisma generate
+# Arrêter et supprimer tout
+docker compose -f docker-compose.prod.yml down -v
 
-# Réappliquer les migrations
-docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
-
-# Reset complet (ATTENTION: perte de données)
-docker compose -f docker-compose.prod.yml exec app npx prisma migrate reset --force
+# Reconstruire et redémarrer
+docker compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml up -d db redis
+sleep 30
+docker compose -f docker-compose.prod.yml run --rm app npx prisma migrate deploy
+docker compose -f docker-compose.prod.yml run --rm app npx prisma db seed
+docker compose -f docker-compose.prod.yml up -d app
 ```
 
 ---
 
-## ✅ Checklist de Déploiement
+## Checklist de déploiement
 
 ### Avant le déploiement
 
-- [ ] `.env` créé et rempli avec tous les secrets
+- [ ] Docker et Docker Compose installés
+- [ ] Cloudflare Tunnel configuré et actif
+- [ ] Dépôt Git cloné dans `/opt/attestations-scn`
+
+### Configuration
+
+- [ ] Fichier `.env` créé avec tous les secrets
+- [ ] `NEXTAUTH_URL` configuré avec l'URL Cloudflare (https://...)
 - [ ] `NEXTAUTH_SECRET` généré (32+ caractères)
-- [ ] `QR_SECRET_KEY` généré (32+ caractères)
-- [ ] Mots de passe PostgreSQL et Redis forts
-- [ ] Configuration SMTP testée
-- [ ] Certificats SSL en place (production)
-- [ ] DNS configuré pointant vers le serveur
-- [ ] Firewall ouvert (ports 80, 443, 22)
+- [ ] `QR_SECRET_KEY` généré (64 caractères hex)
+- [ ] Mots de passe PostgreSQL et Redis configurés
+- [ ] Tunnel Cloudflare pointant vers `localhost:3000`
 
-### Après le déploiement
+### Déploiement
 
-- [ ] Health check réussit (`/api/health`)
-- [ ] Login admin fonctionne
-- [ ] Upload de fichiers fonctionne
-- [ ] Envoi d'emails fonctionne
-- [ ] Signature d'attestations fonctionne
-- [ ] 2FA Email/TOTP fonctionne
-- [ ] Backup automatique configuré
-- [ ] Monitoring des logs en place
-- [ ] SSL actif et valide
+- [ ] Images Docker construites
+- [ ] PostgreSQL et Redis démarrés
+- [ ] Migrations Prisma exécutées
+- [ ] Seed de la base de données exécuté
+- [ ] Application démarrée sur le port 3000
+- [ ] Health check local réussi (`curl http://localhost:3000/api/health`)
+- [ ] Health check via Cloudflare réussi
 
----
+### Post-déploiement
 
-## 📚 Ressources Supplémentaires
-
-- **Documentation Next.js:** https://nextjs.org/docs
-- **Documentation Prisma:** https://www.prisma.io/docs
-- **Documentation Docker:** https://docs.docker.com
-- **Let's Encrypt:** https://letsencrypt.org/getting-started
+- [ ] Connexion admin testée via URL publique
+- [ ] Mot de passe admin changé
+- [ ] hCaptcha configuré (production)
+- [ ] Notifications email testées
+- [ ] Sauvegarde automatique configurée
 
 ---
 
-**Support:** admin@service-civique.ne  
-**Repository:** https://github.com/votre-org/attestations-scn
+**Support :** admin@service-civique.ne
+**Documentation :** https://docs.attestations-scn.ne
