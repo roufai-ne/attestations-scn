@@ -10,6 +10,7 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { getProjectRoot } from '@/lib/utils/path';
 
 // Données exemple pour l'aperçu
 const SAMPLE_DATA: Record<string, string> = {
@@ -63,7 +64,8 @@ export async function POST(
         // Charger l'image de fond si disponible
         if (config.backgroundImage) {
             try {
-                const bgPath = path.join(process.cwd(), 'public', config.backgroundImage);
+                const projectRoot = getProjectRoot();
+                const bgPath = path.join(projectRoot, 'public', config.backgroundImage);
                 const bgBytes = await readFile(bgPath);
                 const bgImage = config.backgroundImage.endsWith('.png')
                     ? await pdfDoc.embedPng(bgBytes)

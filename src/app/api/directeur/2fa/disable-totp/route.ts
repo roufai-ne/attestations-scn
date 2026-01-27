@@ -26,7 +26,36 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { code } = body;
+        const { code, force } = body;
+
+        // Si force=true, désactiver sans vérification (pour reconfiguration)
+        if (force) {
+            const { prisma } = await import('@/lib/prisma');
+            await prisma.directeurSignature.update({
+                where: { userId: session.user.id },
+                data: {
+                    twoFactorMethod: 'email',
+                    totpSecret: null,
+                    totpEnabled: false,
+                    totpBackupCodes: null,
+                },
+            });
+
+            // Log audit
+            await prisma.auditLog.create({
+                data: {
+                    action: 'TOTP_RESET',
+                    userId: session.user.id,
+                    details: JSON.stringify({ reason: 'reconfiguration' }),
+                },
+            });
+
+            return NextResponse.json({
+                success: true,
+                message: 'TOTP réinitialisé pour reconfiguration',
+                method: 'email',
+            });
+        }
 
         if (!code) {
             return NextResponse.json(

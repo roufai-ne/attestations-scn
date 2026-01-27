@@ -206,8 +206,8 @@ export class BrevoService {
           </div>
 
           <div class="footer">
-            <p>Ministère de la Jeunesse et des Sports<br>
-            Direction du Service Civique National<br>
+            <p>Ministère de l'Enseignement Supérieur, de la Recherche et de l'Innovation Technologique<br>
+            Direction de l'Enseignement Supérieur Publique<br>
             République du Niger</p>
           </div>
         </div>
@@ -285,8 +285,8 @@ export class BrevoService {
           </div>
 
           <div class="footer">
-            <p>Ministère de la Jeunesse et des Sports<br>
-            Direction du Service Civique National<br>
+            <p>Ministère de l'Enseignement Supérieur, de la Recherche et de l'Innovation Technologique<br>
+            Direction de l'Enseignement Supérieur Publique<br>
             République du Niger</p>
           </div>
         </div>
@@ -374,8 +374,8 @@ export class BrevoService {
           </div>
 
           <div class="footer">
-            <p>Ministère de la Jeunesse et des Sports<br>
-            Direction du Service Civique National<br>
+            <p>Ministère de l'Enseignement Supérieur, de la Recherche et de l'Innovation Technologique<br>
+            Direction de l'Enseignement Supérieur Publique<br>
             République du Niger</p>
           </div>
         </div>
@@ -457,8 +457,8 @@ export class BrevoService {
           </div>
 
           <div class="footer">
-            <p>Ministère de la Jeunesse et des Sports<br>
-            Direction du Service Civique National<br>
+            <p>Ministère de l'Enseignement Supérieur, de la Recherche et de l'Innovation Technologique<br>
+            Direction de l'Enseignement Supérieur Publique<br>
             République du Niger</p>
           </div>
         </div>

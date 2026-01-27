@@ -14,19 +14,32 @@ if [ -z "$DATABASE_URL" ]; then
     exit 1
 fi
 
-# Attendre que PostgreSQL soit prêt
-echo "⏳ Attente de PostgreSQL..."
-until node -e "
-const { Client } = require('pg');
-const client = new Client({ connectionString: process.env.DATABASE_URL });
-client.connect()
-  .then(() => { client.end(); process.exit(0); })
-  .catch(() => process.exit(1));
-" 2>/dev/null; do
-  echo "   PostgreSQL non prêt - nouvelle tentative dans 2s..."
-  sleep 2
+# Extraire host et port de DATABASE_URL
+DB_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
+DB_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+
+echo "⏳ Attente de PostgreSQL ($DB_HOST:$DB_PORT)..."
+
+# Attendre que PostgreSQL soit prêt (max 60 secondes)
+MAX_RETRIES=30
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if nc -z "$DB_HOST" "$DB_PORT" 2>/dev/null; then
+        echo "✅ PostgreSQL accessible"
+        break
+    fi
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "   PostgreSQL non prêt - tentative $RETRY_COUNT/$MAX_RETRIES..."
+    sleep 2
 done
 
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    echo "❌ PostgreSQL non accessible après $MAX_RETRIES tentatives"
+    exit 1
+fi
+
+# Attendre encore 2 secondes pour que PostgreSQL soit vraiment prêt
+sleep 2
 echo "✅ PostgreSQL prêt"
 
 # Exécuter les migrations Prisma

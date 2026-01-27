@@ -145,7 +145,10 @@ export function HomeHeader({ logoUrl }: HomeHeaderProps) {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                                onClick={() => signOut({ callbackUrl: '/' })}
+                                onClick={() => {
+                                    const baseUrl = window.location.origin;
+                                    signOut({ callbackUrl: `${baseUrl}/` });
+                                }}
                                 className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-600 py-2.5"
                             >
                                 <LogOut className="h-4 w-4" />

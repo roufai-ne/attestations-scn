@@ -144,6 +144,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // Rewrites pour servir les fichiers uploadés depuis le bon emplacement
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: '/api/uploads/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -6,6 +6,7 @@
 import { prisma } from '../prisma';
 import path from 'path';
 import { mkdir, writeFile, unlink } from 'fs/promises';
+import { getProjectRoot } from '../utils/path';
 
 // Types pour la configuration du template
 export interface TemplateField {
@@ -211,7 +212,9 @@ export const AVAILABLE_FIELDS: Omit<TemplateField, 'x' | 'y'>[] = [
 ];
 
 class TemplateService {
-    private readonly uploadDir = path.join(process.cwd(), 'public', 'uploads', 'templates');
+    private getUploadDir() {
+        return path.join(getProjectRoot(), 'public', 'uploads', 'templates');
+    }
 
     /**
      * Liste tous les templates
@@ -250,13 +253,14 @@ class TemplateService {
         backgroundFilename: string;
     }) {
         // Créer le dossier d'upload si nécessaire
-        await mkdir(this.uploadDir, { recursive: true });
+        const uploadDir = this.getUploadDir();
+        await mkdir(uploadDir, { recursive: true });
 
         // Générer un nom de fichier unique
         const timestamp = Date.now();
         const ext = path.extname(data.backgroundFilename);
         const filename = `background_${timestamp}${ext}`;
-        const filepath = path.join(this.uploadDir, filename);
+        const filepath = path.join(uploadDir, filename);
 
         // Sauvegarder l'image
         await writeFile(filepath, data.backgroundImage);
@@ -331,7 +335,8 @@ class TemplateService {
 
         // Supprimer le fichier image
         if (template.fichierPath) {
-            const filepath = path.join(process.cwd(), 'public', template.fichierPath);
+            const projectRoot = getProjectRoot();
+            const filepath = path.join(projectRoot, 'public', template.fichierPath);
             try {
                 await unlink(filepath);
             } catch (err) {

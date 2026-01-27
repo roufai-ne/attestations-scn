@@ -3,16 +3,19 @@ import crypto from 'crypto';
 
 /**
  * Récupère le secret QR de manière sécurisée
- * Lève une erreur si non défini en production
+ * Lève une erreur si non défini (en dev ou en prod)
  */
 function getQRSecret(): string {
     const secret = process.env.QR_SECRET_KEY;
     if (!secret) {
-        if (process.env.NODE_ENV === 'production') {
-            throw new Error('QR_SECRET_KEY doit être défini en production pour signer les QR codes');
-        }
-        console.warn('[SECURITY] QR_SECRET_KEY non défini - utilisation d\'une valeur de développement');
-        return 'dev-only-qr-secret-do-not-use-in-production';
+        throw new Error(
+            'QR_SECRET_KEY doit être défini pour signer les QR codes.\n' +
+            'Générez une clé avec: openssl rand -hex 32\n' +
+            'Puis ajoutez-la dans .env: QR_SECRET_KEY=votre_clé'
+        );
+    }
+    if (secret.length < 32) {
+        throw new Error('QR_SECRET_KEY doit contenir au moins 32 caractères pour une sécurité optimale');
     }
     return secret;
 }

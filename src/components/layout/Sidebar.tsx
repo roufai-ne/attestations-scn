@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConfirm } from '@/components/shared/ConfirmProvider';
+import { useSidebar } from './SidebarContext';
 
 interface NavItem {
     title: string;
@@ -142,8 +143,7 @@ const navItems: NavItem[] = [
 export function Sidebar() {
     const pathname = usePathname();
     const { data: session } = useSession();
-    const [collapsed, setCollapsed] = useState(false);
-    const [mobileOpen, setMobileOpen] = useState(false);
+    const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
     const confirm = useConfirm();
 
@@ -178,7 +178,8 @@ export function Sidebar() {
             cancelText: 'Annuler',
         });
         if (confirmed) {
-            signOut({ callbackUrl: '/login' });
+            const baseUrl = window.location.origin;
+            signOut({ callbackUrl: `${baseUrl}/login` });
         }
     };
 
@@ -197,7 +198,7 @@ export function Sidebar() {
             <aside
                 className={cn(
                     'fixed left-0 top-0 z-40 h-screen bg-[var(--navy)] transition-all duration-300 ease-in-out shadow-xl',
-                    collapsed ? 'w-20' : 'w-72',
+                    collapsed ? 'w-16 lg:w-20' : 'w-64 lg:w-72',
                     mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
                 )}
             >
@@ -205,7 +206,7 @@ export function Sidebar() {
                     {/* Header */}
                     <div className="p-6 border-b border-white/10">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
                                 {logoUrl ? (
                                     <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-white flex-shrink-0">
                                         <Image
@@ -227,6 +228,19 @@ export function Sidebar() {
                                     </div>
                                 )}
                             </div>
+                            
+                            {/* Collapse toggle (desktop only) */}
+                            <button
+                                onClick={() => setCollapsed(!collapsed)}
+                                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 transition-all hover:scale-105 flex-shrink-0"
+                                aria-label={collapsed ? 'Développer la sidebar' : 'Réduire la sidebar'}
+                                title={collapsed ? 'Développer la sidebar' : 'Réduire la sidebar'}
+                            >
+                                <ChevronLeft className={cn(
+                                    'h-4 w-4 text-white transition-transform duration-300',
+                                    collapsed && 'rotate-180'
+                                )} />
+                            </button>
                         </div>
                     </div>
 
@@ -288,7 +302,7 @@ export function Sidebar() {
                     </nav>
 
                     {/* Footer section */}
-                    <div className="p-4 border-t border-white/10 space-y-2">
+                    <div className="p-4 border-t border-white/10">
                         {/* Logout button */}
                         <button
                             onClick={handleSignOut}
@@ -300,18 +314,6 @@ export function Sidebar() {
                         >
                             <LogOut className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-110" />
                             {!collapsed && <span className="font-medium">Déconnexion</span>}
-                        </button>
-
-                        {/* Collapse toggle (desktop only) */}
-                        <button
-                            onClick={() => setCollapsed(!collapsed)}
-                            className="hidden lg:flex items-center justify-center w-full px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
-                            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                        >
-                            <ChevronLeft className={cn(
-                                'h-5 w-5 text-white/60 transition-transform duration-300',
-                                collapsed && 'rotate-180'
-                            )} />
                         </button>
                     </div>
                 </div>

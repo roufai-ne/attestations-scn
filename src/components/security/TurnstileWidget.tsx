@@ -96,30 +96,27 @@ export function HCaptchaWidget({
 
     return (
         <div className={`hcaptcha-container ${className}`}>
-            <HCaptcha
-                ref={captchaRef}
-                sitekey={siteKey}
-                size={size}
-                onVerify={handleVerify}
-                onError={handleError}
-                onExpire={handleExpire}
-                onLoad={onLoad}
-                onOpen={onOpen}
-                onClose={onClose}
-                languageOverride="fr"
-                tabIndex={tabindex}
-                reCaptchaCompat={reCaptchaCompat}
-            />
-            
-            {/* Indicateur de statut */}
+            <div className="inline-block">
+                <HCaptcha
+                    ref={captchaRef}
+                    sitekey={siteKey}
+                    size={size}
+                    onVerify={handleVerify}
+                    onError={handleError}
+                    onExpire={handleExpire}
+                    onLoad={onLoad}
+                    onOpen={onOpen}
+                    onClose={onClose}
+                    languageOverride="fr"
+                    tabIndex={tabindex}
+                    reCaptchaCompat={reCaptchaCompat}
+                />
+            </div>
+
+            {/* Indicateur de statut - affiché en dessous, centré */}
             {status === 'error' && (
-                <p className="mt-2 text-sm text-red-600">
-                    Échec de la vérification. Réinitialisation automatique...
-                </p>
-            )}
-            {status === 'success' && (
-                <p className="mt-2 text-sm text-green-600">
-                    ✓ Vérification réussie
+                <p className="mt-2 text-sm text-red-600 text-center">
+                    Échec de la vérification. Réinitialisation...
                 </p>
             )}
         </div>

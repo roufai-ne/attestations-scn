@@ -7,6 +7,7 @@ import { templateService, TemplateConfig, TemplateField } from './template.servi
 import { StatutAttestation, TypeSignature } from '@prisma/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { getProjectRoot, getUploadsPath, getBaseUrl } from '../utils/path';
 
 export interface AttestationData {
     demandeId: string;
@@ -28,11 +29,28 @@ export interface AttestationData {
  * Utilise le template actif configuré via l'éditeur visuel
  */
 export class AttestationService {
-    private readonly uploadDir = path.join(process.cwd(), 'public', 'uploads', 'attestations');
+    private get uploadDir(): string {
+        return getUploadsPath('attestations');
+    }
+
+    /**
+     * Assure que le dossier d'upload existe
+     * Créé automatiquement en mode standalone
+     */
+    private async ensureUploadDir(): Promise<void> {
+        try {
+            await mkdir(this.uploadDir, { recursive: true });
+        } catch (error) {
+            // Ignore l'erreur si le dossier existe déjà
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+                throw error;
+            }
+        }
+    }
 
     /**
      * Génère un numéro d'attestation séquentiel
-     * Format: XXXXX/MM/AAAA (ex: 00001/01/2026)
+     * Format: XXXXX-MM-AAAA (ex: 00001-01-2026)
      * Le compteur est remis à zéro chaque année
      */
     async generateNumero(): Promise<string> {
@@ -74,8 +92,8 @@ export class AttestationService {
             return counter;
         });
 
-        // Formater le numéro: 00001/01/2026
-        const numero = `${result.counter.toString().padStart(5, '0')}/${currentMonth}/${currentYear}`;
+        // Formater le numéro: 00001-01-2026 (tirets pour compatibilité URL)
+        const numero = `${result.counter.toString().padStart(5, '0')}-${currentMonth}-${currentYear}`;
         return numero;
     }
 
@@ -99,7 +117,7 @@ export class AttestationService {
             case 'diplome':
                 return data.diplome;
             case 'lieuService':
-                return data.lieuService || 'Direction du Service Civique National';
+                return data.lieuService || 'Direction de l\'Enseignement Supérieur Publique';
             case 'dateDebutService':
                 return format(data.dateDebutService, field.format || 'dd/MM/yyyy');
             case 'dateFinService':
@@ -223,7 +241,7 @@ export class AttestationService {
                 pdfDoc = await PDFDocument.create();
 
                 // Charger l'image de fond
-                const bgPath = path.join(process.cwd(), 'public', config.backgroundImage);
+                const bgPath = path.join(getProjectRoot(), 'public', config.backgroundImage);
                 try {
                     const bgBytes = await readFile(bgPath);
                     const bgImage = config.backgroundImage.endsWith('.png')
@@ -289,6 +307,9 @@ export class AttestationService {
             // Remplacer les / par des - pour éviter les problèmes de chemin
             const safeNumero = numero.replace(/\//g, '-');
             const filename = `${safeNumero}.pdf`;
+            
+            // S'assurer que le dossier existe (important pour le mode standalone)
+            await this.ensureUploadDir();
             const fichierPath = path.join(this.uploadDir, filename);
 
             await writeFile(fichierPath, pdfBytes);
@@ -356,7 +377,7 @@ export class AttestationService {
             `Titulaire d'${data.diplome}`,
             '',
             `A accompli avec assiduité le Service Civique National`,
-            `à/au ${data.lieuService || 'Direction du Service Civique National'}`,
+            `à/au ${data.lieuService || 'Direction de l\'Enseignement Supérieur Publique'}`,
             '',
             `Durant la période du ${format(data.dateDebutService, 'dd/MM/yyyy')} au ${format(data.dateFinService, 'dd/MM/yyyy')}`,
         ];
@@ -387,7 +408,7 @@ export class AttestationService {
         });
 
         // QR Code
-        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+        const baseUrl = getBaseUrl();
         const qrCodeBuffer = await qrcodeService.generateQRCodeBuffer(
             {
                 id: data.demandeId,

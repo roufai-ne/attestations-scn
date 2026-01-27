@@ -74,12 +74,12 @@ async function main() {
 
     const arrete1 = await prisma.arrete.create({
         data: {
-            numero: '2023/045/MJS/SCN',
+            numero: '2023/045/MESRIT/SCN',
             dateArrete: new Date('2023-03-15'),
             promotion: '2023',
             annee: '2023',
             fichierPath: '/uploads/arretes/arrete-2023-045.pdf',
-            contenuOCR: 'RÉPUBLIQUE DU NIGER\nMINISTÈRE DE LA JEUNESSE ET DES SPORTS\nARRÊTÉ N° 2023/045/MJS/SCN\nPortant admission au Service Civique National - Promotion 2023\n\nListe des appelés:\n1. ABDOU Ibrahim - Licence en Informatique\n2. MAHAMADOU Fatima - Master en Gestion\n3. SOULEY Amadou - Licence en Droit',
+            contenuOCR: `RÉPUBLIQUE DU NIGER\nMINISTÈRE DE L'ENSEIGNEMENT SUPÉRIEUR, DE LA RECHERCHE ET DE L'INNOVATION TECHNOLOGIQUE\nARRÊTÉ N° 2023/045/MESRIT/SCN\nPortant admission au Service Civique National - Promotion 2023\n\nListe des appelés:\n1. ABDOU Ibrahim - Licence en Informatique\n2. MAHAMADOU Fatima - Master en Gestion\n3. SOULEY Amadou - Licence en Droit`,
             statutIndexation: StatutIndexation.INDEXE,
             dateIndexation: new Date(),
         },
@@ -87,12 +87,12 @@ async function main() {
 
     const arrete2 = await prisma.arrete.create({
         data: {
-            numero: '2024/012/MJS/SCN',
+            numero: '2024/012/MESRIT/SCN',
             dateArrete: new Date('2024-01-10'),
             promotion: '2024',
             annee: '2024',
             fichierPath: '/uploads/arretes/arrete-2024-012.pdf',
-            contenuOCR: 'RÉPUBLIQUE DU NIGER\nMINISTÈRE DE LA JEUNESSE ET DES SPORTS\nARRÊTÉ N° 2024/012/MJS/SCN\nPortant admission au Service Civique National - Promotion 2024\n\nListe des appelés:\n1. HASSAN Aïssata - Licence en Économie\n2. OUMAROU Salissou - Master en Agronomie',
+            contenuOCR: `RÉPUBLIQUE DU NIGER\nMINISTÈRE DE L'ENSEIGNEMENT SUPÉRIEUR, DE LA RECHERCHE ET DE L'INNOVATION TECHNOLOGIQUE\nARRÊTÉ N° 2024/012/MESRIT/SCN\nPortant admission au Service Civique National - Promotion 2024\n\nListe des appelés:\n1. HASSAN Aïssata - Licence en Économie\n2. OUMAROU Salissou - Master en Agronomie`,
             statutIndexation: StatutIndexation.INDEXE,
             dateIndexation: new Date(),
         },
@@ -121,7 +121,7 @@ async function main() {
                     whatsapp: '+22790123456',
                     diplome: 'Licence en Informatique',
                     promotion: '2023',
-                    numeroArrete: '2023/045/MJS/SCN',
+                    numeroArrete: '2023/045/MESRIT/SCN',
                     structure: 'Ministère de l\'Éducation Nationale',
                     dateDebutService: new Date('2023-04-01'),
                     dateFinService: new Date('2024-03-31'),
@@ -180,7 +180,7 @@ async function main() {
                     whatsapp: '+22791234567',
                     diplome: 'Master en Gestion',
                     promotion: '2023',
-                    numeroArrete: '2023/045/MJS/SCN',
+                    numeroArrete: '2023/045/MESRIT/SCN',
                     structure: 'Ministère de la Santé Publique',
                     dateDebutService: new Date('2023-04-01'),
                     dateFinService: new Date('2024-03-31'),
@@ -236,7 +236,7 @@ async function main() {
                     telephone: '+22792345678',
                     diplome: 'Licence en Économie',
                     promotion: '2024',
-                    numeroArrete: '2024/012/MJS/SCN',
+                    numeroArrete: '2024/012/MESRIT/SCN',
                     structure: 'Ministère du Commerce',
                     dateDebutService: new Date('2024-02-01'),
                     dateFinService: new Date('2025-01-31'),

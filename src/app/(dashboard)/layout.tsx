@@ -1,22 +1,23 @@
+'use client';
+
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { Toaster } from '@/components/ui/toaster';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
+import { SidebarProvider, useSidebar } from '@/components/layout/SidebarContext';
 
-export default function DashboardLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+function DashboardContent({ children }: { children: React.ReactNode }) {
+    const { collapsed } = useSidebar();
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <>
             <Sidebar />
 
-            <div className="lg:pl-72 transition-all duration-300">
+            <div className={`transition-all duration-300 ${collapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
                 <Header />
 
-                <main className="p-4 md:p-6 lg:p-8">
-                    <div className="mx-auto max-w-7xl">
+                <main className="p-2 sm:p-4 md:p-6 lg:p-8">
+                    <div className="mx-auto max-w-full">
                         <Breadcrumbs />
                         {children}
                     </div>
@@ -33,6 +34,20 @@ export default function DashboardLayout({
             </div>
 
             <Toaster />
-        </div>
+        </>
+    );
+}
+
+export default function DashboardLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    return (
+        <SidebarProvider>
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+                <DashboardContent>{children}</DashboardContent>
+            </div>
+        </SidebarProvider>
     );
 }

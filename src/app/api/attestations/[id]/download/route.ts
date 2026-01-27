@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { getProjectRoot } from '@/lib/utils/path';
 
 /**
  * GET /api/attestations/[id]/download
@@ -44,24 +45,21 @@ export async function GET(
         }
 
         // Lire le fichier PDF - construire le chemin absolu
+        const projectRoot = getProjectRoot();
         let absolutePath: string;
         const fichierPath = attestation.fichierPath;
 
-        // Vérifier si le chemin est un chemin Windows absolu contenant 'uploads'
-        if (fichierPath.includes('\\uploads\\') || fichierPath.includes('/uploads/')) {
-            // Extraire la partie relative du chemin
-            const uploadsMatch = fichierPath.match(/[\\\/]uploads[\\\/]attestations[\\\/].+$/);
-            if (uploadsMatch) {
-                absolutePath = path.join(process.cwd(), 'public', uploadsMatch[0].replace(/\\/g, '/'));
-            } else {
-                absolutePath = path.join(process.cwd(), 'public', fichierPath);
-            }
-        } else if (path.isAbsolute(fichierPath)) {
+        // Si le chemin commence par /uploads/, le résoudre depuis la racine du projet
+        if (fichierPath.startsWith('/uploads/') || fichierPath.startsWith('uploads/')) {
+            absolutePath = path.join(projectRoot, 'public', fichierPath.replace(/^\//, ''));
+        } 
+        // Si c'est un chemin absolu du système de fichiers
+        else if (path.isAbsolute(fichierPath)) {
             absolutePath = fichierPath;
-        } else if (fichierPath.startsWith('/uploads') || fichierPath.startsWith('uploads')) {
-            absolutePath = path.join(process.cwd(), 'public', fichierPath);
-        } else {
-            absolutePath = path.join(process.cwd(), 'public', fichierPath);
+        } 
+        // Sinon, traiter comme un chemin relatif depuis public
+        else {
+            absolutePath = path.join(projectRoot, 'public', fichierPath);
         }
 
         console.log('Chemin fichier stocké:', fichierPath);

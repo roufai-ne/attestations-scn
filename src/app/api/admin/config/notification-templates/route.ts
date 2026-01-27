@@ -7,8 +7,10 @@ import { auth } from '@/lib/auth';
 import { writeFile, readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import { getProjectRoot } from '@/lib/utils/path';
 
-const TEMPLATES_FILE = path.join(process.cwd(), 'data', 'notification-templates.json');
+const projectRoot = getProjectRoot();
+const TEMPLATES_FILE = path.join(projectRoot, 'data', 'notification-templates.json');
 
 // GET - Récupérer les templates
 export async function GET(request: NextRequest) {
@@ -53,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Créer le dossier data s'il n'existe pas
-    const dataDir = path.join(process.cwd(), 'data');
+    const dataDir = path.join(projectRoot, 'data');
     if (!existsSync(dataDir)) {
       await mkdir(dataDir, { recursive: true });
     }

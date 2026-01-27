@@ -105,7 +105,7 @@ export function ArreteEditDialog({ open, onOpenChange, arrete, onSuccess }: Arre
               id="numero"
               value={formData.numero}
               onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-              placeholder="Ex: 2024/001/MJSAC/SCN"
+              placeholder="Ex: 2024/001/MESRIT/SCN"
               required
             />
           </div>

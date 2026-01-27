@@ -460,18 +460,9 @@ export default function TemplateEditorPage() {
     return (
         <div className="h-screen flex flex-col">
             {/* Header */}
-            <div className="border-b bg-white px-6 py-3">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <Breadcrumbs
-                            items={[
-                                { label: 'Administration', href: '/admin/dashboard' },
-                                { label: 'Templates', href: '/admin/templates' },
-                                { label: template.nom },
-                            ]}
-                        />
-                    </div>
-                    <div className="flex items-center gap-2">
+            <div className="border-b bg-white px-2 sm:px-4 lg:px-6 py-2 lg:py-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-1 lg:gap-2 flex-wrap">
                         <Button variant="outline" size="sm" onClick={() => setZoom((z) => Math.max(0.3, z - 0.1))}>
                             <ZoomOut className="h-4 w-4" />
                         </Button>
@@ -533,9 +524,9 @@ export default function TemplateEditorPage() {
             {/* Main content */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Palette des champs */}
-                <div className="w-64 border-r bg-gray-50 p-4 overflow-y-auto">
-                    <h3 className="font-semibold mb-3">Champs disponibles</h3>
-                    <p className="text-xs text-gray-500 mb-4">
+                <div className="w-40 lg:w-56 border-r bg-gray-50 p-2 lg:p-3 overflow-y-auto hidden md:block">
+                    <h3 className="font-semibold mb-2 text-sm">Champs disponibles</h3>
+                    <p className="text-xs text-gray-500 mb-2">
                         Cliquez pour ajouter un champ
                     </p>
                     <div className="space-y-2">
@@ -562,7 +553,7 @@ export default function TemplateEditorPage() {
 
                 {/* Canvas */}
                 <div
-                    className="flex-1 overflow-auto bg-gray-200 p-8"
+                    className="flex-1 overflow-auto bg-gray-200 p-2 lg:p-8"
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
@@ -687,26 +678,26 @@ export default function TemplateEditorPage() {
                 </div>
 
                 {/* Panel de propriétés avec onglets */}
-                <div className="w-80 border-l bg-white overflow-y-auto">
+                <div className="w-56 lg:w-72 border-l bg-white overflow-y-auto">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-                        <TabsList className="w-full grid grid-cols-3 p-1 m-2">
-                            <TabsTrigger value="champ" className="text-xs">
-                                <Type className="h-3 w-3 mr-1" />
-                                Champ
+                        <TabsList className="w-full grid grid-cols-3 p-0.5 m-1">
+                            <TabsTrigger value="champ" className="text-[10px] lg:text-xs px-1 lg:px-2">
+                                <Type className="h-3 w-3 mr-0.5 lg:mr-1" />
+                                <span className="hidden sm:inline">Champ</span>
                             </TabsTrigger>
-                            <TabsTrigger value="layout" className="text-xs">
-                                <Layout className="h-3 w-3 mr-1" />
-                                Layout
+                            <TabsTrigger value="layout" className="text-[10px] lg:text-xs px-1 lg:px-2">
+                                <Layout className="h-3 w-3 mr-0.5 lg:mr-1" />
+                                <span className="hidden sm:inline">Layout</span>
                             </TabsTrigger>
-                            <TabsTrigger value="positions" className="text-xs">
-                                <Move className="h-3 w-3 mr-1" />
-                                Positions
+                            <TabsTrigger value="positions" className="text-[10px] lg:text-xs px-1 lg:px-2">
+                                <Move className="h-3 w-3 mr-0.5 lg:mr-1" />
+                                <span className="hidden sm:inline">Pos.</span>
                             </TabsTrigger>
                         </TabsList>
 
                         {/* Onglet Champ */}
-                        <TabsContent value="champ" className="flex-1 p-4 overflow-y-auto">
-                            <h3 className="font-semibold mb-4">Propriétés du champ</h3>
+                        <TabsContent value="champ" className="flex-1 p-2 lg:p-3 overflow-y-auto">
+                            <h3 className="font-semibold mb-2 text-sm">Propriétés du champ</h3>
                             {selectedFieldData ? (
                                 <div className="space-y-4">
                                     <p className="text-sm text-gray-500">{selectedFieldData.label}</p>
@@ -901,8 +892,8 @@ export default function TemplateEditorPage() {
                         </TabsContent>
 
                         {/* Onglet Layout */}
-                        <TabsContent value="layout" className="flex-1 p-4 overflow-y-auto">
-                            <h3 className="font-semibold mb-4">Mise en page</h3>
+                        <TabsContent value="layout" className="flex-1 p-2 lg:p-3 overflow-y-auto">
+                            <h3 className="font-semibold mb-2 text-sm">Mise en page</h3>
 
                             <Card className="mb-4">
                                 <CardHeader className="pb-2">
@@ -968,9 +959,9 @@ export default function TemplateEditorPage() {
                         </TabsContent>
 
                         {/* Onglet Positions */}
-                        <TabsContent value="positions" className="flex-1 p-4 overflow-y-auto">
-                            <h3 className="font-semibold mb-4">Positions fixes</h3>
-                            <p className="text-xs text-gray-500 mb-4">
+                        <TabsContent value="positions" className="flex-1 p-2 lg:p-3 overflow-y-auto">
+                            <h3 className="font-semibold mb-2 text-sm">Positions fixes</h3>
+                            <p className="text-xs text-gray-500 mb-2">
                                 Ces positions sont utilisées lors de la signature électronique
                             </p>
 

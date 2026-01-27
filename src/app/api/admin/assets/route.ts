@@ -3,9 +3,11 @@ import { auth } from '@/lib/auth';
 import { writeFile, mkdir, readFile } from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
+import { getProjectRoot } from '@/lib/utils/path';
 
-const ASSETS_CONFIG_FILE = path.join(process.cwd(), 'public', 'uploads', 'assets-config.json');
-const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
+const projectRoot = getProjectRoot();
+const ASSETS_CONFIG_FILE = path.join(projectRoot, 'public', 'uploads', 'assets-config.json');
+const UPLOADS_DIR = path.join(projectRoot, 'public', 'uploads');
 
 interface AssetsConfig {
     logoUrl?: string;

@@ -211,11 +211,11 @@ docker-compose logs -f app
 
 ## 🤝 Contribution
 
-Ce projet est développé pour le Ministère de la Jeunesse et des Sports du Niger.
+Ce projet est développé pour le Ministère de l'Enseignement Supérieur, de la Recherche et de l'Innovation Technologique du Niger.
 
 ## 📄 Licence
 
-Usage interne - Ministère de la Jeunesse et des Sports, République du Niger
+Usage interne - Ministère de l'Enseignement Supérieur, de la Recherche et de l'Innovation Technologique, République du Niger
 
 ---
 

@@ -3,12 +3,22 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PenTool, Key, Shield, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { PenTool, Key, Shield, CheckCircle, AlertTriangle, Loader2, Mail, Smartphone } from 'lucide-react';
 import Link from 'next/link';
+
+interface TwoFactorStatus {
+    enabled: boolean;
+    currentMethod: 'email' | 'totp';
+    methods: {
+        email: { active: boolean };
+        totp: { active: boolean; configured: boolean };
+    };
+}
 
 export default function DirecteurProfilPage() {
     const [loading, setLoading] = useState(true);
     const [hasSignature, setHasSignature] = useState(false);
+    const [twoFactorStatus, setTwoFactorStatus] = useState<TwoFactorStatus | null>(null);
 
     useEffect(() => {
         checkConfiguration();
@@ -16,9 +26,19 @@ export default function DirecteurProfilPage() {
 
     const checkConfiguration = async () => {
         try {
-            const response = await fetch('/api/directeur/signature/config');
-            const data = await response.json();
-            setHasSignature(data.configured);
+            // Charger la config signature et le statut 2FA en parallèle
+            const [signatureRes, twoFactorRes] = await Promise.all([
+                fetch('/api/directeur/signature/config'),
+                fetch('/api/directeur/2fa/status'),
+            ]);
+
+            const signatureData = await signatureRes.json();
+            setHasSignature(signatureData.configured);
+
+            if (twoFactorRes.ok) {
+                const twoFactorData = await twoFactorRes.json();
+                setTwoFactorStatus(twoFactorData);
+            }
         } catch (error) {
             console.error('Erreur vérification config:', error);
         } finally {
@@ -144,14 +164,15 @@ export default function DirecteurProfilPage() {
                                         Sécurité renforcée
                                     </p>
                                     <p className="text-sm text-blue-700">
-                                        Le système 2FA actuel utilise votre <strong>PIN</strong> comme premier facteur 
-                                        et un <strong>code temporaire de 6 chiffres</strong> envoyé par email comme second facteur.
+                                        Le système 2FA utilise votre <strong>PIN</strong> comme premier facteur
+                                        et un <strong>code temporaire</strong> comme second facteur.
                                     </p>
                                 </div>
                             </div>
                         </div>
 
                         <div className="space-y-3">
+                            {/* Premier facteur : PIN */}
                             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                 <div className="flex items-center gap-3">
                                     <CheckCircle className="h-5 w-5 text-green-600" />
@@ -165,26 +186,43 @@ export default function DirecteurProfilPage() {
                                 <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Actif</span>
                             </div>
 
+                            {/* Second facteur : Méthode 2FA active */}
                             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                 <div className="flex items-center gap-3">
-                                    <CheckCircle className="h-5 w-5 text-green-600" />
+                                    {twoFactorStatus?.currentMethod === 'totp' ? (
+                                        <Smartphone className="h-5 w-5 text-purple-600" />
+                                    ) : (
+                                        <Mail className="h-5 w-5 text-blue-600" />
+                                    )}
                                     <div>
-                                        <p className="text-sm font-medium">Second facteur : Code Email</p>
+                                        <p className="text-sm font-medium">
+                                            Second facteur : {twoFactorStatus?.currentMethod === 'totp'
+                                                ? 'Application Authenticator'
+                                                : 'Code par email'}
+                                        </p>
                                         <p className="text-xs text-gray-600">
-                                            Code temporaire envoyé à votre email
+                                            {twoFactorStatus?.currentMethod === 'totp'
+                                                ? 'Google Authenticator ou application similaire'
+                                                : 'Code envoyé à votre adresse email'}
                                         </p>
                                     </div>
                                 </div>
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Actif</span>
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                    twoFactorStatus?.currentMethod === 'totp'
+                                        ? 'bg-purple-100 text-purple-700'
+                                        : 'bg-blue-100 text-blue-700'
+                                }`}>
+                                    Actif
+                                </span>
                             </div>
                         </div>
 
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                            <p className="text-sm text-amber-800">
-                                <strong>Note :</strong> Le 2FA est automatiquement activé pour toutes les signatures. 
-                                Assurez-vous d&apos;avoir accès à votre email pour recevoir les codes de vérification.
-                            </p>
-                        </div>
+                        <Link href="/directeur/profil/securite-2fa">
+                            <Button className="w-full" variant="outline">
+                                <Shield className="mr-2 h-4 w-4" />
+                                Changer la méthode 2FA
+                            </Button>
+                        </Link>
                     </CardContent>
                 </Card>
             </div>

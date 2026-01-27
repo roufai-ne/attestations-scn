@@ -8,6 +8,7 @@ const PUBLIC_API_ROUTES = [
     "/api/health",
     "/api/verifier",
     "/api/admin/assets", // Configuration publique des assets (logo, hero)
+    "/api/uploads", // Fichiers uploadés (templates, attestations, etc.)
 ]
 
 // Mapping des routes API par rôle

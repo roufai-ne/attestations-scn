@@ -102,7 +102,8 @@ export default function ParametresPage() {
     };
 
     const handleLogout = async () => {
-        await signOut({ callbackUrl: '/login' });
+        const baseUrl = window.location.origin;
+        await signOut({ callbackUrl: `${baseUrl}/login` });
     };
 
     const handleDeleteAccount = async () => {
@@ -118,7 +119,8 @@ export default function ParametresPage() {
             });
 
             if (response.ok) {
-                await signOut({ callbackUrl: '/login' });
+                const baseUrl = window.location.origin;
+                await signOut({ callbackUrl: `${baseUrl}/login` });
             }
         } catch (err) {
             console.error('Erreur suppression compte:', err);

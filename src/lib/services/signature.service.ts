@@ -3,10 +3,12 @@ import { PDFDocument } from 'pdf-lib';
 import { readFile, writeFile } from 'fs/promises';
 import { prisma } from '../prisma';
 import path from 'path';
+import { SECURITY_CONFIG } from '../security/config';
+import { getProjectRoot, getPublicPath, getBaseUrl } from '../utils/path';
 
-const SALT_ROUNDS = 10;
-const MAX_PIN_ATTEMPTS = 5;
-const BLOCK_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+const SALT_ROUNDS = SECURITY_CONFIG.PASSWORD_CONFIG.BCRYPT_ROUNDS;
+const MAX_PIN_ATTEMPTS = SECURITY_CONFIG.PIN_CONFIG.MAX_ATTEMPTS;
+const BLOCK_DURATION_MS = SECURITY_CONFIG.PIN_CONFIG.LOCKOUT_DURATION_MS;
 
 /**
  * Service de gestion de la signature électronique du directeur
@@ -161,9 +163,10 @@ export class SignatureService {
                 },
             });
 
+            const lockoutMinutes = Math.ceil(BLOCK_DURATION_MS / 60000);
             return {
                 valid: false,
-                reason: 'Trop de tentatives. Compte bloqué pour 30 minutes',
+                reason: `Trop de tentatives. Compte bloqué pour ${lockoutMinutes} minutes`,
             };
         }
 
@@ -234,9 +237,18 @@ export class SignatureService {
             : (templateConfig?.qrCodePosition || { x: 50, y: 450, size: 80 });
 
         // Construire le chemin du fichier
-        const pdfPath = attestation.fichierPath.startsWith('/')
-            ? path.join(process.cwd(), 'public', attestation.fichierPath)
-            : attestation.fichierPath;
+        const projectRoot = getProjectRoot();
+        let pdfPath: string;
+        if (attestation.fichierPath.startsWith('/uploads/')) {
+            // Chemin relatif stocké en DB: /uploads/attestations/xxx.pdf
+            pdfPath = path.join(projectRoot, 'public', attestation.fichierPath);
+        } else if (attestation.fichierPath.startsWith('/')) {
+            // Autre chemin absolu virtuel
+            pdfPath = path.join(projectRoot, 'public', attestation.fichierPath);
+        } else {
+            // Chemin absolu du système de fichiers
+            pdfPath = attestation.fichierPath;
+        }
 
         // Charger le PDF existant
         const pdfBytes = await readFile(pdfPath);
@@ -249,7 +261,7 @@ export class SignatureService {
 
         // 1. Appliquer la SIGNATURE à la position du template
         const signaturePath = config.signatureImage.startsWith('/')
-            ? path.join(process.cwd(), 'public', config.signatureImage)
+            ? path.join(getProjectRoot(), 'public', config.signatureImage)
             : config.signatureImage;
 
         const signatureImageBytes = await readFile(signaturePath);
@@ -269,7 +281,7 @@ export class SignatureService {
         const { qrcodeService } = await import('./qrcode.service');
         const { format } = await import('date-fns');
 
-        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+        const baseUrl = getBaseUrl();
         const qrCodeBuffer = await qrcodeService.generateQRCodeBuffer(
             {
                 id: attestation.demandeId,

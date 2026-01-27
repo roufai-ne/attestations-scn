@@ -83,7 +83,7 @@ services:
     container_name: attestations-redis
     image: redis:7-alpine
     restart: always
-    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1", "--loglevel", "warning"]
+    command: redis-server --appendonly yes --save 60 1 --loglevel warning
     volumes:
       - redis_data:/data
     healthcheck:

@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { unlink } from 'fs/promises';
 import path from 'path';
+import { getProjectRoot } from '@/lib/utils/path';
 
 /**
  * GET /api/attestations/[id]
@@ -95,8 +96,9 @@ export async function DELETE(
         // Supprimer le fichier PDF si existant
         if (attestation.fichierPath) {
             try {
+                const projectRoot = getProjectRoot();
                 const filePath = attestation.fichierPath.startsWith('/')
-                    ? path.join(process.cwd(), 'public', attestation.fichierPath)
+                    ? path.join(projectRoot, 'public', attestation.fichierPath)
                     : attestation.fichierPath;
                 await unlink(filePath);
             } catch (err) {

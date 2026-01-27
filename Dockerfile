@@ -11,7 +11,7 @@ FROM node:20-alpine AS base
 # Stage 1: Dépendances
 # ============================================
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache gcompat || true
 WORKDIR /app
 
 # Copier les fichiers de lock
@@ -50,15 +50,15 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Installer les dépendances système pour canvas/OCR
-RUN apk add --no-cache libc6-compat cairo pango
+# Installer les dépendances système et netcat pour healthcheck
+RUN apk add --no-cache gcompat cairo pango netcat-openbsd || apk add --no-cache cairo pango netcat-openbsd
 
 # Créer un utilisateur non-root
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Créer les répertoires nécessaires
-RUN mkdir -p /app/uploads /app/public/attestations /app/public/arretes
+RUN mkdir -p /app/uploads /app/public/attestations /app/public/arretes /app/public/uploads/attestations /app/public/uploads/arretes /app/public/uploads/templates /app/public/uploads/signatures /app/public/uploads/temp /app/data
 RUN chown -R nextjs:nodejs /app
 
 # Copier les fichiers nécessaires de l'étape builder

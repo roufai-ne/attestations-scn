@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { signatureService } from '@/lib/services/signature.service';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { getProjectRoot } from '@/lib/utils/path';
 
 /**
  * GET /api/directeur/signature/config
@@ -85,7 +86,8 @@ export async function POST(request: NextRequest) {
 
         if (signatureImage && signatureImage.size > 0) {
             // Créer le dossier de signatures s'il n'existe pas
-            const signaturesDir = path.join(process.cwd(), 'public', 'uploads', 'signatures');
+            const projectRoot = getProjectRoot();
+            const signaturesDir = path.join(projectRoot, 'public', 'uploads', 'signatures');
             await mkdir(signaturesDir, { recursive: true });
 
             // Sauvegarder l'image

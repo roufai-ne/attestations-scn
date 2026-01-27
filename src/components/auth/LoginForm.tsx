@@ -4,8 +4,15 @@ import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Mail, Lock, AlertCircle, Loader2 } from "lucide-react"
+import { Mail, Lock, AlertCircle, Loader2, Clock, ShieldX } from "lucide-react"
 import { HCaptchaWidget, useHCaptcha } from "@/components/security/TurnstileWidget"
+
+interface AuthError {
+    message: string
+    code: string
+    attemptsLeft?: number
+    minutesLeft?: number
+}
 
 export default function LoginForm() {
     const router = useRouter()
@@ -14,70 +21,122 @@ export default function LoginForm() {
 
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
-    const [error, setError] = useState("")
+    const [error, setError] = useState<AuthError | null>(null)
     const [isLoading, setIsLoading] = useState(false)
-    
+
     // Gestion du token hCaptcha avec nouvelles fonctionnalités
-    const { 
-        token: hcaptchaToken, 
+    const {
+        token: hcaptchaToken,
         eKey,
-        isVerified, 
+        isVerified,
         captchaRef,
-        handleSuccess, 
-        handleError, 
-        handleExpire, 
-        reset 
+        handleSuccess,
+        handleError,
+        handleExpire,
+        reset
     } = useHCaptcha()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        setError("")
-        
+        setError(null)
+
         // Vérifier que le CAPTCHA est validé
         if (!isVerified || !hcaptchaToken) {
-            setError("Veuillez compléter la vérification de sécurité")
+            setError({ message: "Veuillez compléter la vérification de sécurité", code: "CAPTCHA_REQUIRED" })
             return
         }
-        
+
         setIsLoading(true)
 
         try {
+            // Étape 1: Pré-validation pour obtenir des messages d'erreur précis
+            // Note: On n'envoie PAS le token CAPTCHA ici car il sera utilisé par NextAuth
+            const checkResponse = await fetch('/api/auth/check-account', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email.toLowerCase().trim(),
+                    password,
+                }),
+            })
+
+            const checkResult = await checkResponse.json()
+
+            if (!checkResult.success) {
+                setError({
+                    message: checkResult.message,
+                    code: checkResult.code,
+                    attemptsLeft: checkResult.attemptsLeft,
+                    minutesLeft: checkResult.minutesLeft,
+                })
+                reset() // Réinitialiser le CAPTCHA après une erreur
+                return
+            }
+
+            // Étape 2: Connexion via NextAuth
             const result = await signIn("credentials", {
-                email,
+                email: email.toLowerCase().trim(),
                 password,
-                hcaptchaToken, // Envoyer le token CAPTCHA
+                hcaptchaToken,
                 redirect: false,
             })
 
             if (result?.error) {
-                setError("Email ou mot de passe incorrect")
-                reset() // Réinitialiser le CAPTCHA après une erreur
+                setError({ message: "Erreur de connexion. Veuillez réessayer.", code: "AUTH_ERROR" })
+                reset()
             } else {
                 // Recharger pour obtenir la session et laisser le serveur rediriger selon le rôle
                 window.location.href = callbackUrl === "/" ? "/login" : callbackUrl
             }
         } catch (error) {
-            setError("Une erreur est survenue. Veuillez réessayer.")
+            setError({ message: "Une erreur est survenue. Veuillez réessayer.", code: "NETWORK_ERROR" })
             reset() // Réinitialiser le CAPTCHA après une erreur
         } finally {
             setIsLoading(false)
         }
     }
 
+    // Rendu de l'erreur avec icône appropriée
+    const renderError = () => {
+        if (!error) return null
+
+        const isLocked = error.code === 'ACCOUNT_LOCKED'
+        const isDisabled = error.code === 'ACCOUNT_DISABLED'
+        const Icon = isLocked ? Clock : isDisabled ? ShieldX : AlertCircle
+        const bgColor = isLocked || isDisabled ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'
+        const textColor = isLocked || isDisabled ? 'text-amber-900' : 'text-red-900'
+        const iconColor = isLocked || isDisabled ? 'text-amber-600' : 'text-red-600'
+        const subTextColor = isLocked || isDisabled ? 'text-amber-700' : 'text-red-700'
+
+        return (
+            <div className={`flex items-start gap-3 rounded-xl ${bgColor} p-4 border`}>
+                <Icon className={`h-5 w-5 ${iconColor} flex-shrink-0 mt-0.5`} />
+                <div>
+                    <p className={`text-sm font-medium ${textColor}`}>{error.message}</p>
+                    {error.attemptsLeft !== undefined && error.attemptsLeft > 0 && (
+                        <p className={`text-xs ${subTextColor} mt-1`}>
+                            Attention : votre compte sera temporairement verrouillé après {error.attemptsLeft} tentative(s) échouée(s) supplémentaire(s).
+                        </p>
+                    )}
+                    {isLocked && (
+                        <p className={`text-xs ${subTextColor} mt-1`}>
+                            Vous pouvez aussi contacter l&apos;administrateur pour débloquer votre compte.
+                        </p>
+                    )}
+                    {isDisabled && (
+                        <p className={`text-xs ${subTextColor} mt-1`}>
+                            Contactez l&apos;administrateur pour plus d&apos;informations.
+                        </p>
+                    )}
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="w-full">
             <form onSubmit={handleSubmit} className="space-y-5">
-                {error && (
-                    <div className="flex items-start gap-3 rounded-xl bg-red-50 p-4 border border-red-100">
-                        <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-sm font-medium text-red-900">{error}</p>
-                            <p className="text-xs text-red-700 mt-1">
-                                Vérifiez vos identifiants et réessayez
-                            </p>
-                        </div>
-                    </div>
-                )}
+                {renderError()}
 
                 <div className="space-y-2">
                     <label

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Lock, AlertCircle, Mail, Shield } from 'lucide-react';
+import { Loader2, Lock, AlertCircle, Mail, Shield, Smartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface SignatureDialogProps {
@@ -22,6 +22,8 @@ interface SignatureDialogProps {
     attestationIds: string[];
     onSuccess: () => void;
 }
+
+type TwoFactorMethod = 'email' | 'totp';
 
 export function SignatureDialog({
     open,
@@ -35,8 +37,31 @@ export function SignatureDialog({
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [twoFactorMethod, setTwoFactorMethod] = useState<TwoFactorMethod>('email');
+    const [methodLoading, setMethodLoading] = useState(true);
 
-    // Étape 1 : Demander un code OTP
+    // Charger la méthode 2FA configurée à l'ouverture du dialog
+    useEffect(() => {
+        if (open) {
+            fetchTwoFactorMethod();
+        }
+    }, [open]);
+
+    const fetchTwoFactorMethod = async () => {
+        setMethodLoading(true);
+        try {
+            const response = await fetch('/api/directeur/2fa/status');
+            const data = await response.json();
+            setTwoFactorMethod(data.currentMethod || 'email');
+        } catch (error) {
+            console.error('Erreur chargement méthode 2FA:', error);
+            setTwoFactorMethod('email');
+        } finally {
+            setMethodLoading(false);
+        }
+    };
+
+    // Étape 1 : Vérifier le PIN et demander/préparer OTP
     const handleRequestOTP = async () => {
         if (!pin || pin.length < 4) {
             setError('Veuillez saisir votre PIN');
@@ -59,13 +84,21 @@ export function SignatureDialog({
             const result = await response.json();
 
             if (!response.ok) {
-                throw new Error(result.error || 'Erreur lors de la demande du code');
+                throw new Error(result.error || 'Erreur lors de la vérification');
             }
 
-            toast({
-                title: 'Code envoyé',
-                description: 'Un code de vérification a été envoyé à votre email',
-            });
+            // Message différent selon la méthode
+            if (twoFactorMethod === 'totp') {
+                toast({
+                    title: 'PIN validé',
+                    description: 'Entrez le code de votre application Authenticator',
+                });
+            } else {
+                toast({
+                    title: 'Code envoyé',
+                    description: 'Un code de vérification a été envoyé à votre email',
+                });
+            }
 
             setStep('otp');
         } catch (error) {
@@ -81,7 +114,7 @@ export function SignatureDialog({
         }
     };
 
-    // Étape 2 : Signer avec PIN + OTP
+    // Étape 2 : Signer avec PIN + OTP/TOTP
     const handleSign = async () => {
         if (!otp || otp.length !== 6) {
             setError('Veuillez saisir le code à 6 chiffres');
@@ -145,6 +178,15 @@ export function SignatureDialog({
         onOpenChange(false);
     };
 
+    // Icône et texte selon la méthode
+    const isTotp = twoFactorMethod === 'totp';
+    const OtpIcon = isTotp ? Smartphone : Mail;
+    const otpLabel = isTotp ? 'Code Authenticator' : 'Code de vérification';
+    const otpPlaceholder = 'Code à 6 chiffres';
+    const otpHelperText = isTotp
+        ? 'Code généré par votre application (Google Authenticator, etc.)'
+        : 'Code envoyé par email (valide 5 min)';
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
@@ -154,10 +196,19 @@ export function SignatureDialog({
                         Signature sécurisée (2FA)
                     </DialogTitle>
                     <DialogDescription>
-                        {step === 'pin' ? (
+                        {methodLoading ? (
+                            <span className="flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Chargement...
+                            </span>
+                        ) : step === 'pin' ? (
                             <>
                                 Vous êtes sur le point de signer {attestationIds.length} attestation(s).
-                                Saisissez votre PIN pour recevoir un code de vérification.
+                                Saisissez votre PIN pour continuer.
+                            </>
+                        ) : isTotp ? (
+                            <>
+                                Entrez le code à 6 chiffres affiché dans votre application Authenticator.
                             </>
                         ) : (
                             <>
@@ -176,8 +227,7 @@ export function SignatureDialog({
                         </Alert>
                     )}
 
-                    {step === 'pin' ? (
-                        // Étape 1 : Saisie du PIN
+                    {!methodLoading && step === 'pin' ? (
                         <div className="space-y-2">
                             <Label htmlFor="pin">PIN de signature</Label>
                             <div className="relative">
@@ -200,21 +250,28 @@ export function SignatureDialog({
                             <p className="text-sm text-gray-500">
                                 PIN de 4 à 6 chiffres configuré dans votre profil
                             </p>
+
+                            <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                                <OtpIcon className="h-4 w-4" />
+                                <span>
+                                    Méthode 2FA : {isTotp ? 'Application Authenticator' : 'Code par email'}
+                                </span>
+                            </div>
                         </div>
-                    ) : (
-                        // Étape 2 : Saisie du code OTP
+                    ) : !methodLoading && step === 'otp' ? (
                         <div className="space-y-2">
-                            <Label htmlFor="otp">Code de vérification</Label>
+                            <Label htmlFor="otp">{otpLabel}</Label>
                             <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <OtpIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <Input
                                     id="otp"
                                     type="text"
                                     value={otp}
                                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                                    placeholder="Code à 6 chiffres"
+                                    placeholder={otpPlaceholder}
                                     className="pl-10 text-center text-lg tracking-widest"
                                     maxLength={6}
+                                    autoFocus
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             handleSign();
@@ -224,21 +281,27 @@ export function SignatureDialog({
                             </div>
                             <div className="flex items-center justify-between">
                                 <p className="text-sm text-gray-500">
-                                    Code envoyé par email (valide 5 min)
+                                    {otpHelperText}
                                 </p>
-                                <Button
-                                    variant="link"
-                                    size="sm"
-                                    onClick={() => {
-                                        setStep('pin');
-                                        setOtp('');
-                                        setError(null);
-                                    }}
-                                    className="text-xs"
-                                >
-                                    Renvoyer le code
-                                </Button>
+                                {!isTotp && (
+                                    <Button
+                                        variant="link"
+                                        size="sm"
+                                        onClick={() => {
+                                            setStep('pin');
+                                            setOtp('');
+                                            setError(null);
+                                        }}
+                                        className="text-xs"
+                                    >
+                                        Renvoyer le code
+                                    </Button>
+                                )}
                             </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                         </div>
                     )}
                 </div>
@@ -252,16 +315,16 @@ export function SignatureDialog({
                         Annuler
                     </Button>
                     {step === 'pin' ? (
-                        <Button onClick={handleRequestOTP} disabled={loading || !pin}>
+                        <Button onClick={handleRequestOTP} disabled={loading || !pin || methodLoading}>
                             {loading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Envoi en cours...
+                                    Vérification...
                                 </>
                             ) : (
                                 <>
-                                    <Mail className="mr-2 h-4 w-4" />
-                                    Recevoir le code
+                                    <OtpIcon className="mr-2 h-4 w-4" />
+                                    {isTotp ? 'Continuer' : 'Recevoir le code'}
                                 </>
                             )}
                         </Button>

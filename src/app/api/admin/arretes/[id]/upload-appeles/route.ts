@@ -5,6 +5,7 @@ import { excelParserService } from '@/lib/services/excel-parser.service';
 import { writeFile, unlink } from 'fs/promises';
 import path from 'path';
 import { sanitizeFilename } from '@/lib/security/sanitize';
+import { getProjectRoot } from '@/lib/utils/path';
 
 // Taille maximale de fichier: 5 Mo
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -98,7 +99,8 @@ export async function POST(
         // Sauvegarder temporairement le fichier avec nom sanitisé
         const buffer = Buffer.from(await file.arrayBuffer());
         const safeFilename = sanitizeFilename(file.name);
-        const tempFilePath = path.join(process.cwd(), 'public', 'uploads', 'temp', `${Date.now()}-${safeFilename}`);
+        const projectRoot = getProjectRoot();
+        const tempFilePath = path.join(projectRoot, 'public', 'uploads', 'temp', `${Date.now()}-${safeFilename}`);
 
         await writeFile(tempFilePath, buffer);
 

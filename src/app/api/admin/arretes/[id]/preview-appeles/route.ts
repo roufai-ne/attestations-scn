@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { excelParserService } from '@/lib/services/excel-parser.service';
 import { writeFile, unlink } from 'fs/promises';
 import path from 'path';
+import { getProjectRoot } from '@/lib/utils/path';
 
 /**
  * POST /api/admin/arretes/[id]/preview-appeles
@@ -68,7 +69,8 @@ export async function POST(
 
         // Sauvegarder temporairement le fichier
         const buffer = Buffer.from(await file.arrayBuffer());
-        tempFilePath = path.join(process.cwd(), 'public', 'uploads', 'temp', `preview-${Date.now()}-${file.name}`);
+        const projectRoot = getProjectRoot();
+        tempFilePath = path.join(projectRoot, 'public', 'uploads', 'temp', `preview-${Date.now()}-${file.name}`);
 
         await writeFile(tempFilePath, buffer);
 

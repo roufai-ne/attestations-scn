@@ -46,10 +46,19 @@ function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
         'edit': 'Modifier',
         'signature': 'Signature',
         'changer-pin': 'Changer PIN',
+        'securite-2fa': 'Sécurité 2FA',
         // Profil et paramètres
         'profil': 'Mon profil',
         'parametres': 'Paramètres',
         'stats': 'Statistiques',
+    };
+
+    // Mapping pour rediriger les sections vers leur dashboard
+    const dashboardRedirect: Record<string, string> = {
+        'agent': '/agent/dashboard',
+        'directeur': '/directeur/dashboard',
+        'admin': '/admin/dashboard',
+        'saisie': '/saisie/dashboard',
     };
 
     const breadcrumbs: BreadcrumbItem[] = [];
@@ -59,15 +68,20 @@ function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
         currentPath += `/${segment}`;
 
         // Ne pas inclure les IDs dynamiques comme breadcrumb cliquable
-        const isId = /^[a-zA-Z0-9]{20,}$/.test(segment) || /^\d+$/.test(segment);
+        const isId = /^[a-zA-Z0-9]{20,}$/.test(segment) || /^\d+$/.test(segment) || segment.startsWith('cm');
 
         if (isId) {
             // Pour les IDs, on affiche "Détails" sans lien
             breadcrumbs.push({ label: 'Détails' });
         } else {
+            // Si c'est une section racine (admin, agent, etc.), rediriger vers le dashboard
+            const href = index === 0 && dashboardRedirect[segment] 
+                ? dashboardRedirect[segment]
+                : (index < segments.length - 1 ? currentPath : undefined);
+
             breadcrumbs.push({
                 label: labelMap[segment] || segment.charAt(0).toUpperCase() + segment.slice(1),
-                href: index < segments.length - 1 ? currentPath : undefined, // Pas de lien sur le dernier élément
+                href: href,
             });
         }
     });

@@ -88,7 +88,9 @@ export function Header() {
             cancelText: 'Annuler',
         });
         if (confirmed) {
-            signOut({ callbackUrl: '/login' });
+            // Utiliser l'URL courante pour éviter la redirection vers localhost
+            const baseUrl = window.location.origin;
+            signOut({ callbackUrl: `${baseUrl}/login` });
         }
     };
 
