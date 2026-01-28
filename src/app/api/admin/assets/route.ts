@@ -13,6 +13,14 @@ interface AssetsConfig {
     logoUrl?: string;
     heroImageUrl?: string;
     updatedAt?: string;
+    // Configuration des numéros d'attestation
+    numeroConfig?: {
+        startNumber: number; // Numéro de départ (ex: 1)
+        digitCount: number; // Nombre de chiffres (ex: 5 pour 00001)
+        separator: string; // Séparateur (ex: '-', '/', etc.)
+        dateFormat: 'MM-YYYY' | 'YYYY-MM' | 'MM/YYYY' | 'YYYY/MM'; // Format de la date
+        resetYearly: boolean; // Réinitialiser le compteur chaque année
+    };
 }
 
 async function ensureUploadsDir() {
@@ -177,6 +185,68 @@ export async function DELETE(request: NextRequest) {
         console.error('Error deleting asset:', error);
         return NextResponse.json(
             { error: 'Failed to delete asset' },
+            { status: 500 }
+        );
+    }
+}
+
+// PUT: Update numero configuration
+export async function PUT(request: NextRequest) {
+    try {
+        const session = await auth();
+
+        if (!session || session.user.role !== 'ADMIN') {
+            return NextResponse.json(
+                { error: 'Non autorisé' },
+                { status: 401 }
+            );
+        }
+
+        const body = await request.json();
+        const { numeroConfig } = body;
+
+        if (!numeroConfig) {
+            return NextResponse.json(
+                { error: 'Configuration requise' },
+                { status: 400 }
+            );
+        }
+
+        // Validate numeroConfig
+        if (numeroConfig.startNumber < 1) {
+            return NextResponse.json(
+                { error: 'Le numéro de départ doit être supérieur à 0' },
+                { status: 400 }
+            );
+        }
+
+        if (numeroConfig.digitCount < 1 || numeroConfig.digitCount > 10) {
+            return NextResponse.json(
+                { error: 'Le nombre de chiffres doit être entre 1 et 10' },
+                { status: 400 }
+            );
+        }
+
+        // Get current config
+        const currentConfig = await getConfig();
+
+        // Update config
+        const updatedConfig = {
+            ...currentConfig,
+            numeroConfig,
+            updatedAt: new Date().toISOString(),
+        };
+
+        await saveConfig(updatedConfig);
+
+        return NextResponse.json({
+            message: 'Configuration mise à jour avec succès',
+            config: updatedConfig,
+        });
+    } catch (error) {
+        console.error('Error updating numero config:', error);
+        return NextResponse.json(
+            { error: 'Erreur lors de la mise à jour' },
             { status: 500 }
         );
     }

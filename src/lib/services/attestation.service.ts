@@ -50,33 +50,57 @@ export class AttestationService {
 
     /**
      * Génère un numéro d'attestation séquentiel
-     * Format: XXXXX-MM-AAAA (ex: 00001-01-2026)
-     * Le compteur est remis à zéro chaque année
+     * Format configurable via assets-config.json
+     * Par défaut: XXXXX-MM-AAAA (ex: 00001-01-2026)
      */
     async generateNumero(): Promise<string> {
         const now = new Date();
         const currentYear = now.getFullYear();
         const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
 
+        // Charger la configuration depuis assets-config.json
+        let config: any = {};
+        try {
+            const configPath = path.join(getProjectRoot(), 'public', 'uploads', 'assets-config.json');
+            const { existsSync } = await import('fs');
+            if (existsSync(configPath)) {
+                const configContent = await readFile(configPath, 'utf-8');
+                config = JSON.parse(configContent);
+            }
+        } catch (error) {
+            console.warn('Impossible de charger la configuration des numéros:', error);
+        }
+
+        // Configuration par défaut
+        const numeroConfig = config.numeroConfig || {
+            startNumber: 1,
+            digitCount: 5,
+            separator: '-',
+            dateFormat: 'MM-YYYY',
+            resetYearly: true,
+        };
+
         // Utiliser une transaction pour éviter les doublons
         const result = await prisma.$transaction(async (tx) => {
-            // Récupérer ou créer le compteur pour l'année en cours
+            // Récupérer ou créer le compteur
             let counter = await tx.attestationCounter.findUnique({
                 where: { id: 'singleton' },
             });
 
-            if (!counter || counter.year !== currentYear) {
+            const shouldReset = numeroConfig.resetYearly && counter && counter.year !== currentYear;
+
+            if (!counter || shouldReset) {
                 // Nouvelle année ou premier enregistrement
                 counter = await tx.attestationCounter.upsert({
                     where: { id: 'singleton' },
                     create: {
                         id: 'singleton',
                         year: currentYear,
-                        counter: 1,
+                        counter: numeroConfig.startNumber,
                     },
                     update: {
                         year: currentYear,
-                        counter: 1,
+                        counter: numeroConfig.startNumber,
                     },
                 });
             } else {
@@ -92,8 +116,34 @@ export class AttestationService {
             return counter;
         });
 
-        // Formater le numéro: 00001-01-2026 (tirets pour compatibilité URL)
-        const numero = `${result.counter.toString().padStart(5, '0')}-${currentMonth}-${currentYear}`;
+        // Formater la partie date selon la configuration
+        let datePart = '';
+        const year = currentYear.toString();
+        switch (numeroConfig.dateFormat) {
+            case 'MM-YYYY':
+                datePart = `${currentMonth}-${year}`;
+                break;
+            case 'YYYY-MM':
+                datePart = `${year}-${currentMonth}`;
+                break;
+            case 'MM/YYYY':
+                datePart = `${currentMonth}/${year}`;
+                break;
+            case 'YYYY/MM':
+                datePart = `${year}/${currentMonth}`;
+                break;
+            default:
+                datePart = `${currentMonth}-${year}`;
+        }
+
+        // Formater le numéro avec le nombre de chiffres configuré
+        const paddedNumber = result.counter.toString().padStart(numeroConfig.digitCount, '0');
+        
+        // Construire le numéro final
+        const numero = numeroConfig.separator
+            ? `${paddedNumber}${numeroConfig.separator}${datePart}`
+            : `${paddedNumber}${datePart}`;
+
         return numero;
     }
 

@@ -4,16 +4,25 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import { Upload, Trash2, Image as ImageIcon, CheckCircle, AlertCircle, RefreshCcw } from 'lucide-react';
+import { Upload, Trash2, Image as ImageIcon, CheckCircle, AlertCircle, RefreshCcw, Hash, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/shared/ConfirmProvider';
 
+interface NumeroConfig {
+    startNumber: number;
+    digitCount: number;
+    separator: string;
+    dateFormat: 'MM-YYYY' | 'YYYY-MM' | 'MM/YYYY' | 'YYYY/MM';
+    resetYearly: boolean;
+}
+
 interface AssetsConfig {
     logoUrl?: string;
     heroImageUrl?: string;
     updatedAt?: string;
+    numeroConfig?: NumeroConfig;
 }
 
 export default function AssetsConfigPage() {
@@ -24,6 +33,14 @@ export default function AssetsConfigPage() {
     const [uploading, setUploading] = useState<{ logo: boolean; hero: boolean }>({
         logo: false,
         hero: false,
+    });
+    const [savingNumero, setSavingNumero] = useState(false);
+    const [numeroConfig, setNumeroConfig] = useState<NumeroConfig>({
+        startNumber: 1,
+        digitCount: 5,
+        separator: '-',
+        dateFormat: 'MM-YYYY',
+        resetYearly: true,
     });
 
     const logoInputRef = useRef<HTMLInputElement>(null);
@@ -45,6 +62,9 @@ export default function AssetsConfigPage() {
             if (response.ok) {
                 const data = await response.json();
                 setAssets(data);
+                if (data.numeroConfig) {
+                    setNumeroConfig(data.numeroConfig);
+                }
             }
         } catch (error) {
             console.error('Error fetching assets:', error);
@@ -143,6 +163,69 @@ export default function AssetsConfigPage() {
         }
     };
 
+    const handleSaveNumeroConfig = async () => {
+        setSavingNumero(true);
+        try {
+            const response = await fetch('/api/admin/assets', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ numeroConfig }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                toast({
+                    title: 'Succès',
+                    description: 'Configuration des numéros mise à jour',
+                    variant: 'default',
+                });
+                fetchAssets();
+            } else {
+                toast({
+                    title: 'Erreur',
+                    description: data.error || 'Erreur lors de la sauvegarde',
+                    variant: 'destructive',
+                });
+            }
+        } catch (error) {
+            toast({
+                title: 'Erreur',
+                description: 'Erreur lors de la sauvegarde',
+                variant: 'destructive',
+            });
+        } finally {
+            setSavingNumero(false);
+        }
+    };
+
+    const generatePreviewNumero = () => {
+        const now = new Date();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const year = now.getFullYear().toString();
+        const number = numeroConfig.startNumber.toString().padStart(numeroConfig.digitCount, '0');
+        
+        let datePart = '';
+        switch (numeroConfig.dateFormat) {
+            case 'MM-YYYY':
+                datePart = `${month}-${year}`;
+                break;
+            case 'YYYY-MM':
+                datePart = `${year}-${month}`;
+                break;
+            case 'MM/YYYY':
+                datePart = `${month}/${year}`;
+                break;
+            case 'YYYY/MM':
+                datePart = `${year}/${month}`;
+                break;
+        }
+        
+        return `${number}${numeroConfig.separator}${datePart}`;
+    };
+
     if (status === 'loading' || loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -167,6 +250,149 @@ export default function AssetsConfigPage() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-8">
+                {/* Numero Configuration */}
+                <Card className="p-6 md:col-span-2">
+                    <h2 className="text-lg font-semibold text-[var(--navy)] mb-4 flex items-center gap-2">
+                        <Hash className="w-5 h-5" />
+                        Format des Numéros d&apos;Attestation
+                    </h2>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Numéro de départ
+                            </label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={numeroConfig.startNumber}
+                                onChange={(e) => setNumeroConfig({
+                                    ...numeroConfig,
+                                    startNumber: parseInt(e.target.value) || 1
+                                })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--accent-orange)] focus:border-transparent"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Le compteur commencera à partir de ce numéro
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Nombre de chiffres
+                            </label>
+                            <select
+                                value={numeroConfig.digitCount}
+                                onChange={(e) => setNumeroConfig({
+                                    ...numeroConfig,
+                                    digitCount: parseInt(e.target.value)
+                                })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--accent-orange)] focus:border-transparent"
+                            >
+                                <option value={3}>3 chiffres (001)</option>
+                                <option value={4}>4 chiffres (0001)</option>
+                                <option value={5}>5 chiffres (00001)</option>
+                                <option value={6}>6 chiffres (000001)</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Les zéros seront ajoutés automatiquement
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Séparateur
+                            </label>
+                            <select
+                                value={numeroConfig.separator}
+                                onChange={(e) => setNumeroConfig({
+                                    ...numeroConfig,
+                                    separator: e.target.value
+                                })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--accent-orange)] focus:border-transparent"
+                            >
+                                <option value="-">Tiret (-)</option>
+                                <option value="/">Slash (/)</option>
+                                <option value="_">Underscore (_)</option>
+                                <option value="">Aucun</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Caractère entre le numéro et la date
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Format de date
+                            </label>
+                            <select
+                                value={numeroConfig.dateFormat}
+                                onChange={(e) => setNumeroConfig({
+                                    ...numeroConfig,
+                                    dateFormat: e.target.value as NumeroConfig['dateFormat']
+                                })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--accent-orange)] focus:border-transparent"
+                            >
+                                <option value="MM-YYYY">MM-YYYY (01-2026)</option>
+                                <option value="YYYY-MM">YYYY-MM (2026-01)</option>
+                                <option value="MM/YYYY">MM/YYYY (01/2026)</option>
+                                <option value="YYYY/MM">YYYY/MM (2026/01)</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Format d&apos;affichage de la date
+                            </p>
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={numeroConfig.resetYearly}
+                                    onChange={(e) => setNumeroConfig({
+                                        ...numeroConfig,
+                                        resetYearly: e.target.checked
+                                    })}
+                                    className="w-4 h-4 text-[var(--accent-orange)] border-gray-300 rounded focus:ring-[var(--accent-orange)]"
+                                />
+                                <span className="text-sm font-medium text-gray-700">
+                                    Réinitialiser le compteur chaque année
+                                </span>
+                            </label>
+                            <p className="text-xs text-gray-500 mt-1 ml-6">
+                                Le compteur repart à {numeroConfig.startNumber} au 1er janvier
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Preview */}
+                    <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm font-medium text-blue-900 mb-2">
+                            Aperçu du format:
+                        </p>
+                        <p className="text-2xl font-mono font-bold text-blue-700">
+                            {generatePreviewNumero()}
+                        </p>
+                        <p className="text-xs text-blue-600 mt-2">
+                            Exemple: Le prochain numéro généré sera dans ce format
+                        </p>
+                    </div>
+
+                    <div className="mt-4 flex justify-end">
+                        <Button
+                            onClick={handleSaveNumeroConfig}
+                            disabled={savingNumero}
+                            className="bg-[var(--accent-orange)] hover:bg-[var(--accent-orange-dark)]"
+                        >
+                            {savingNumero ? (
+                                <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                                <Save className="w-4 h-4 mr-2" />
+                            )}
+                            Enregistrer la configuration
+                        </Button>
+                    </div>
+                </Card>
+
                 {/* Logo Configuration */}
                 <Card className="p-6">
                     <h2 className="text-lg font-semibold text-[var(--navy)] mb-4 flex items-center gap-2">
