@@ -28,8 +28,8 @@ services:
         condition: service_started
     volumes:
       - uploads_data:/app/uploads
-      - attestations_data:/app/public/attestations
-      - arretes_data:/app/public/arretes
+      - public_uploads:/app/public/uploads
+      - data_config:/app/data
     networks:
       - attestations-network
 
@@ -83,8 +83,8 @@ volumes:
   postgres_data:
   redis_data:
   uploads_data:
-  attestations_data:
-  arretes_data:
+  public_uploads:
+  data_config:
 
 
 networks:

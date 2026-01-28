@@ -40,8 +40,8 @@ services:
         condition: service_healthy
     volumes:
       - uploads_data:/app/uploads
-      - attestations_data:/app/public/attestations
-      - arretes_data:/app/public/arretes
+      - public_uploads:/app/public/uploads
+      - data_config:/app/data
     networks:
       - attestations-network
     deploy:
@@ -124,9 +124,9 @@ volumes:
     driver: local
   uploads_data:
     driver: local
-  attestations_data:
+  public_uploads:
     driver: local
-  arretes_data:
+  data_config:
     driver: local
 
 networks:
